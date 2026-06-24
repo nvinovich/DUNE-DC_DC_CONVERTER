@@ -5,11 +5,13 @@ from colorama import init, Fore, Back, Style
 from WorkbookCreator import *
 from Tests import *
 init(autoreset=True)
+#init db if not already
+init_db()
 
 #====================================================TESTING PARAMS====================================================#
 #These are to be chosen in accordance with the DC_DC Converter Report 2.1
-INITIAL_START_UP_VOLTAGE = 5
-INITIAL_START_UP_CURRENT = 0
+INITIAL_START_UP_VOLTAGE = [58.0,61.0]
+INITIAL_START_UP_CURRENT = [33,35]
 #Input Voltage Sweep
 VOLTAGE_SWEEP_RNG = [4.9,5.1]
 #======================================================================================================================#
@@ -61,38 +63,52 @@ DMM.write("*CLS")
 DMM.write("SENS:FUNC 'VOLT:DC'")
 PS.write("*RST")
 
-if Initial_Start_Up_Test(DMM, PS, INITIAL_START_UP_VOLTAGE,INITIAL_START_UP_CURRENT):
-    print("INITIAL START UP: ", Fore.GREEN + "PASS")
-else:
-    print("INITIAL START UP: ", Fore.RED + "FAIL")
+#testing loop:
+test_output = {}
+test_more_boards_o7 = True
+while test_more_boards_o7:
+    if input(Fore.MAGENTA + "Test Next Board? (y/n) ") == "n":
+        test_more_boards_o7 = False
+        break
+        #starts storing data for next board
+    test_output = {
+        "board_id": "NA",
+        "initial_voltage": -1,
+        "initial_current": -1,
+        "initial_start_up": "NULL",
+        "input_voltage_sweep": "NULL",
+        "nominal_load_performance": "NULL",
+        "output_emi": "NULL",
+        "initial_temperature": "NULL",
+        "input_current_output_voltage": "NULL",
+        "output_step_load": "NULL",
+        "input_step_voltage": "NULL",
+        "output_noise_voltage": "NULL",
+        "cold_start_up": "NULL",
+    }
 
-time.sleep(0.5)
-if Input_Voltage_Sweep(DMM,PS,VOLTAGE_SWEEP_RNG):
-    print("INPUT VOLTAGE SWEEP: ", Fore.GREEN + "PASS")
-else:
-    print("INPUT VOLTAGE SWEEP: ", Fore.RED + "FAIL")
+    test_output["board_id"] = input(Fore.MAGENTA + "Enter Board ID: ")
+
+    if Initial_Start_Up_Test(DMM, PS, INITIAL_START_UP_VOLTAGE,INITIAL_START_UP_CURRENT, test_output):
+        print("INITIAL START UP: ", Fore.GREEN + "PASS")
+    else:
+        print("INITIAL START UP: ", Fore.RED + "FAIL")
+
+    time.sleep(0.5)
+    if Input_Voltage_Sweep(DMM,PS,VOLTAGE_SWEEP_RNG, INITIAL_START_UP_VOLTAGE, test_output):
+        print("INPUT VOLTAGE SWEEP: ", Fore.GREEN + "PASS")
+    else:
+        print("INPUT VOLTAGE SWEEP: ", Fore.RED + "FAIL")
+
+    insert_test(test_output)
+    print("TEST RESULT EXPORTED")
 
 #safely close resources i hope
 PS.write("*RST")
 DMM.write("*RST")
 RM.close()
 
-init_db()
-
-insert_test({
-    "board_id": "A1",
-    "initial_voltage": INITIAL_START_UP_VOLTAGE,
-    "initial_current": INITIAL_START_UP_CURRENT,
-    "initial_start_up": "PASS",
-    "input_voltage_sweep": "PASS",
-    "nominal_load_performance": "PASS",
-    "output_emi": "PASS",
-    "initial_temperature": "PASS",
-    "input_current_output_voltage": "PASS",
-    "output_step_load": "PASS",
-    "input_step_voltage": "PASS",
-    "output_noise_voltage": "PASS",
-    "cold_start_up": "PASS",
-})
-
-export_to_excel()
+if input(Fore.MAGENTA + "Download DATA as .XLSX? (y/n) ") == 'y':
+    export_to_excel()
+    time.sleep(0.5)
+    print("Download Complete")
