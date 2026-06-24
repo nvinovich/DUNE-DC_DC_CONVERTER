@@ -2,6 +2,7 @@ import sys
 import time
 import pyvisa
 from colorama import init, Fore, Back, Style
+from WorkbookCreator import *
 from Tests import *
 init(autoreset=True)
 
@@ -12,6 +13,8 @@ INITIAL_START_UP_CURRENT = 0
 #Input Voltage Sweep
 VOLTAGE_SWEEP_RNG = [4.9,5.1]
 #======================================================================================================================#
+
+#output data structure for each
 
 #Check for good multimeter and power supply connections
 print("Checking for resources...")
@@ -73,3 +76,23 @@ else:
 PS.write("*RST")
 DMM.write("*RST")
 RM.close()
+
+init_db()
+
+insert_test({
+    "board_id": "A1",
+    "initial_voltage": INITIAL_START_UP_VOLTAGE,
+    "initial_current": INITIAL_START_UP_CURRENT,
+    "initial_start_up": "PASS",
+    "input_voltage_sweep": "PASS",
+    "nominal_load_performance": "PASS",
+    "output_emi": "PASS",
+    "initial_temperature": "PASS",
+    "input_current_output_voltage": "PASS",
+    "output_step_load": "PASS",
+    "input_step_voltage": "PASS",
+    "output_noise_voltage": "PASS",
+    "cold_start_up": "PASS",
+})
+
+export_to_excel()
