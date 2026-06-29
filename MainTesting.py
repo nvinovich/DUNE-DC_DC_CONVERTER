@@ -20,11 +20,11 @@ IDEAL_INCOMING_VOLTAGE = 5.0
 CALIBRATED_VOLTAGE_IN = 5.0
 #4.2.1
 INITIAL_START_UP_VOLTAGE = [58.0,61.0]
-INITIAL_START_UP_CURRENT = [0.033,0.035]
+INITIAL_START_UP_CURRENT = [-0.035,-0.033]
 #4.2.2
 #4.3.2
 OUTPUT_VOLTAGE_COLD = [48.0,50.0]#ask mike hwy this is a tigheter range
-INPUT_CURRENT_COLD = [0.025,0.027]
+INPUT_CURRENT_COLD = [-0.025,-0.027]
 #======================================================================================================================#
 
 #Check for good multimeter and power supply connections
@@ -69,7 +69,7 @@ print(Fore.GREEN + "All resources connected successfully.\n")
 #Configure and reset meters
 DMM.write("*RST")
 DMM.write("*CLS")
-DMM.write("SENSy:FUNC 'VOLT:DC'")
+DMM.write("SENS:FUNC 'VOLT:DC'")
 PS.write("*RST")
 
 #testing loop:
@@ -113,8 +113,8 @@ while test_more_boards_o7:
         test_more_boards_o7 = False
         break
     PS.write("*RST")
-    input(Fore.MAGENTA + "Confirm that all power supply channels are OFF by pressing ENTER:")
-    input(Fore.MAGENTA + "Replace current board with next, press ENTER to continue:")
+    input(Fore.MAGENTA + "Confirm that all power supply channels are OFF by pressing ENTER")
+    input(Fore.MAGENTA + "Replace current board with next, press ENTER to continue")
     test_output["board_id"] = input(Fore.MAGENTA + "Board ID: ")
 
 #calibration of incoming voltage
@@ -147,6 +147,9 @@ while test_more_boards_o7:
     print(Fore.LIGHTCYAN_EX + "TEST RESULT EXPORTED")
 
     if input(Fore.MAGENTA + "Continue to Cold Testing? (y/n) ").lower() == "y":
+        #not entirely needed, but reset just to be safe
+        PS.write("*RST")
+        DMM.write("*RST")
         print("Timer begun for 300 seconds...")
         time.sleep(3)
         print("Timer end, press ENTER to continue:")
@@ -154,6 +157,7 @@ while test_more_boards_o7:
         continue
 
 #secondary calibration for cold testing
+
     CALIBRATED_VOLTAGE_IN, inboard = Calibrate_to_Ideal_Incoming_Voltage(DMM, PS,
                                         IDEAL_INCOMING_VOLTAGE, CALIBRATED_VOLTAGE_IN)
     test_output["secondary_calibration"] = (str(round(CALIBRATED_VOLTAGE_IN,5)) +

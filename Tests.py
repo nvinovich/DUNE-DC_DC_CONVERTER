@@ -6,8 +6,8 @@ from colorama import init, Fore, Back, Style
 import numpy as np
 from pyvisa import Resource
 
-debug = False #general debug to see more test output
-debug_nstab = False
+debug = True #general debug to see more test output
+debug_nstab = True
 init(autoreset=True)
 
 def Calibrate_to_Ideal_Incoming_Voltage(  DMM: Resource, PS: Resource, IDEAL_INCOMING_VOLTAGE: float,
@@ -161,15 +161,6 @@ def Nominal_Load_Performance(DMM: Resource, PS: Resource, INITIAL_START_UP_VOLTA
     #with execution upon prompting
     DMM.write("*RST")
     DMM.write("ROUT:MULT:CLOS (@3)")
-    if debug_nstab:
-        DMM.write("SENS:FUNC 'VOLT:DC'")
-        DMM.write("TRAC:CLE")
-        DMM.write("TRAC:POIN 10")
-        DMM.write("SAMP:COUN 10")
-        DMM.write("TRIG:TIM 0.1")
-        DMM.write("TRIG:SOUR TIM")
-
-        DMM.write("INIT") #armed
 
     #activates relay for 1 megaohn resistance channel
     #that is, channel 2
@@ -188,25 +179,38 @@ def Nominal_Load_Performance(DMM: Resource, PS: Resource, INITIAL_START_UP_VOLTA
     final_output = None
     #readback data and then unpack
     if debug_nstab:
-        # DMM execution:
-        DMM.write("*TRG")
-        DMM.query("*OPC?")
+        #strangely behaving here
+        '''Steps the voltage fast'''
+        DMM.write("*RST")
+        PS.write("*RST")
+        PS.write("INST CH1")
+        PS.write("VOLT " + str(CALIBRATED_VOLTAGE_IN))
+        DMM.write("*RST")
+        DMM.write('TRAC:CLE "defbuffer1"')
+        DMM.write('TRAC:POIN 10, "defbuffer1"')
+        print("buffer set")
 
-        data = DMM.query('TRAC:DATA? 1,10, "defbuffer1"')
-        nstab_test_output["n0"] = data[0]
-        nstab_test_output["n1"] = data[1]
-        nstab_test_output["n2"] = data[2]
-        nstab_test_output["n3"] = data[3]
-        nstab_test_output["n4"] = data[4]
-        nstab_test_output["n5"] = data[5]
-        nstab_test_output["n6"] = data[6]
-        nstab_test_output["n7"] = data[7]
-        nstab_test_output["n8"] = data[8]
-        nstab_test_output["n9"],final_output = data[9],data[9]
+        DMM.write('FUNC "VOLT:DC"')
+        print("idk")
+        DMM.write('VOLT:DC:NPLC 0.01')
+        DMM.write('ZERO:AUTO OFF')
+        print("auto zering")
+
+        DMM.write('TRIG:LOAD "DurationLoop",1')
+        DMM.write('TRIG:TIM 0.1')
+        DMM.write('TRIG:COUN 10')
+
+        time.sleep(2)  # wait before starting acquisition
+        DMM.write('INIT')
+        DMM.query('*OPC?')  # wait until complete
+
+        data = DMM.query('TRAC:DATA? 1,10,"defbuffer1",READ')
+        print(data)
 
     else:
-        final_output= float(DMM.query("READ?"))
-    if debug: print(str(final_output) + "was final stabilized voltage")
+        final_output = float(DMM.query("READ?"))
+
+    if debug: print(str(final_output) + " was final stabilized voltage")
     if final_output >= INITIAL_START_UP_VOLTAGE[0] and final_output <= INITIAL_START_UP_VOLTAGE[1]:
         test_output["nominal_load_performance"] = "PASS"
         return True
