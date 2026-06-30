@@ -1,9 +1,12 @@
+import sys
 import time
 
 from colorama import init, Fore, Back, Style
 import pyvisa
 import numpy as np
 from pyvisa import Resource
+
+from Tests import Input_Voltage_Step
 
 
 def DUNE_ASCII():
@@ -14,27 +17,54 @@ def DUNE_ASCII():
     Fore.MAGENTA +"██████▀  ▀██████▀ ███    ███ ▀███████\n",
     Fore.MAGENTA +"DEEP UNDERGROUND NEUTRINO EXPERIMENT")
 
-def IOV_Step_Funtion(DMM:Resource, PS:Resource, CALIBRATED_VOLTAGE_IN:float)->None:
-    '''Steps the voltage fast'''
-    DMM.write("*RST")
-    PS.write("*RST")
-    PS.write("INST CH1")
-    PS.write("VOLT " + str(CALIBRATED_VOLTAGE_IN))
-    DMM.write("*RST")
-    DMM.write('TRAC:CLE "defbuffer1"')
-    DMM.write('TRAC:POIN 10, "defbuffer1"')
+def RESOURCE_CONNECTOR(RM)->(Resource,Resource):
+    '''CONNECTS DMM THEN PS'''
+    print("Checking for resources...")
+    resources = RM.list_resources()
 
-    DMM.write('FUNC "VOLT:DC"')
-    DMM.write('VOLT:DC:NPLC 0.01')
-    DMM.write('ZERO:AUTO OFF')
+    if len(resources) == 0:
+        sys.exit("No resources found.")
 
-    DMM.write('TRIG:LOAD "DurationLoop",1')
-    DMM.write('TRIG:TIM 0.1')
-    DMM.write('TRIG:COUN 10')
+    DMM = None
+    PS = None
 
-    time.sleep(2)  # wait before starting acquisition
-    DMM.write('INIT')
-    DMM.query('*OPC?')  # wait until complete
+    for r in resources:
+        try:
+            device = RM.open_resource(r)
 
-    data = DMM.query('TRAC:DATA? 1,10,"defbuffer1",READ')
-    print(data)
+            device.timeout = 5000
+            device.read_termination = "\n"
+            device.write_termination = "\n"
+
+            device.clear()
+            device.write("*CLS")
+            device.write("*RST")
+
+            idn = device.query("*IDN?").strip()
+            manufacturer, model, serial, firmware = idn.split(",")
+
+            if model == "MODEL DMM6500":
+                DMM = device
+                print(Fore.MAGENTA+"DMM connected:", idn)
+
+            elif model == "E36312A":
+                PS = device
+                print(Fore.MAGENTA+"PS connected:", idn)
+        except Exception:
+            continue
+
+    if DMM is None:
+        sys.exit("No digital multimeter found.")
+    if PS is None:
+        sys.exit("No power supply found.")
+
+    return DMM, PS
+
+if __name__ =='__main__':
+    #just a debug script for the data buffer proc
+    RM = pyvisa.ResourceManager()
+    DMM, PS = RESOURCE_CONNECTOR(RM)
+
+    Input_Voltage_Step(DMM, PS,5)
+
+    RM.close()

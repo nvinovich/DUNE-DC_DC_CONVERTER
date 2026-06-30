@@ -5,6 +5,7 @@ import winsound
 from colorama import init, Fore, Back, Style
 import numpy as np
 from pyvisa import Resource
+import matplotlib.pyplot as mp
 
 debug = True #general debug to see more test output
 debug_nstab = True
@@ -221,9 +222,43 @@ def Nominal_Load_Performance(DMM: Resource, PS: Resource, INITIAL_START_UP_VOLTA
 def Input_and_Ouput_Cold( DMM: Resource, PS: Resource,OUTPUT_VOLTAGE: float, INPUT_CURRENT:float,
                           test_ouput) -> bool:
     '''4.3.2'''
+    return True
 
-    PS.write("*RST")
+def Input_Voltage_Step(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN: float):
+
     DMM.write("*RST")
-
+    PS.write("*RST")
     PS.write("INST CH1")
-    PS.write("")
+    PS.write("VOLT 5")
+    PS.write("CURR 0.05")
+    PS.write("OUTP ON")
+    time.sleep(3)
+    PS.query("*OPC?")
+    #calibrates inputs
+
+    DMM.write('FUNC "VOLT:DC"')
+    DMM.write("ROUT:MULT:CLOS (@3)")
+    DMM.write('TRAC:CLE "defbuffer1"')
+    DMM.write('TRAC:POIN 100')
+    DMM.write('TRIG:LOAD "SimpleLoop",100,0.02')
+    #go ahead and take 100 measurements in 2 sec
+    DMM.write('INIT')
+    time.sleep(0.5)
+
+    PS.write("VOLT 5.1")
+
+    #let me know when done, will throw all sorts of errors if something in the setup isnt perfect
+    DMM.query('*OPC?')
+
+    n = int(DMM.query('TRAC:ACT? "defbuffer1"'))
+    print("samples:", n)
+
+    if n > 0:
+        data = DMM.query(f'TRAC:DATA? 1,{n},"defbuffer1",READ')
+        datalist = list(data.split(','))
+        print(datalist)
+        #mangled scipi formatting, had to do it manually
+        datalist = [round(float(datalist[i][:datalist[i].index("E")])*10**int(datalist[i][datalist[i].index("E")+1:]),5)
+                    for i in range(len(datalist))]
+        mp.plot(datalist)
+        mp.show()

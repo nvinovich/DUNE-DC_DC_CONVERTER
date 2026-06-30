@@ -4,6 +4,7 @@ import pyvisa
 from colorama import init, Fore, Back, Style
 from winsound import MB_ICONASTERISK
 import Utilities
+from Utilities import RESOURCE_CONNECTOR
 from WorkbookCreator import *
 from Tests import *
 init(autoreset=True)
@@ -28,42 +29,10 @@ INPUT_CURRENT_COLD = [-0.025,-0.027]
 #======================================================================================================================#
 
 #Check for good multimeter and power supply connections
-print("Checking for resources...")
 RM = pyvisa.ResourceManager()
-resources = RM.list_resources()
+DMM,PS = RESOURCE_CONNECTOR(RM)
 
-if len(resources) == 0:
-    sys.exit("No resources found.")
-
-DMM = None
-PS = None
-
-for r in resources:
-    try:
-        device = RM.open_resource(r)
-        idn = device.query("*IDN?").strip()
-
-        manufacturer, model, serial, firmware = idn.split(",")
-
-        #check for dmm, these are hardcoded as specific models for now
-        if model == "MODEL DMM6500":
-            DMM = device
-            print(Fore.MAGENTA + "DMM connected:", idn)
-
-        #check for power supply
-        elif model == "E36312A":
-            PS = device
-            print(Fore.MAGENTA+ "PS connected:", idn)
-
-    except Exception:
-        continue
-
-if DMM is None:
-    sys.exit("No digital multimeter found.")
-if PS is None:
-    sys.exit("No power supply found.")
-
-#if it makes it this jevbfar, we are good to go
+#if it makes it this far, we are good to go
 print(Fore.GREEN + "All resources connected successfully.\n")
 
 #Configure and reset meters
