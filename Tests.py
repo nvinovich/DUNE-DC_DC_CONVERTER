@@ -7,8 +7,9 @@ import numpy as np
 from pyvisa import Resource
 import matplotlib.pyplot as mp
 
-debug = True #general debug to see more test output
-debug_nstab = True
+debug = False #general debug to see more test output
+debug_nstab = False
+show_plots = True
 init(autoreset=True)
 
 def Calibrate_to_Ideal_Incoming_Voltage(  DMM: Resource, PS: Resource, IDEAL_INCOMING_VOLTAGE: float,
@@ -43,16 +44,16 @@ def Calibrate_to_Ideal_Incoming_Voltage(  DMM: Resource, PS: Resource, IDEAL_INC
             PS.write("*RST")
             final_time = round(time.time() - start_time, 3)
             winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
-            sys.exit("CALIBRATION FAILED DUE TO TIMEOUT AT " + str(final_time) + " SEC.")
-        #this is a stupid visual display to make sure people know its doing something
+            sys.exit("AUTOCALIBRATION FAILED DUE TO TIMEOUT AT " + str(final_time) + " SEC.")
         if debug:
             print(CALIBRATED_VOLTAGE_IN)
             print("error of " + str(abs(incoming_volts - IDEAL_INCOMING_VOLTAGE)))
 
         if (incoming_volts - IDEAL_INCOMING_VOLTAGE) >= tolerance:
-            CALIBRATED_VOLTAGE_IN -=0.00012*IDEAL_INCOMING_VOLTAGE
+            #if error >=
+            CALIBRATED_VOLTAGE_IN -=0.00025*IDEAL_INCOMING_VOLTAGE
         if (incoming_volts - IDEAL_INCOMING_VOLTAGE) <= -tolerance:
-            CALIBRATED_VOLTAGE_IN +=0.00012*IDEAL_INCOMING_VOLTAGE
+            CALIBRATED_VOLTAGE_IN +=0.00025*IDEAL_INCOMING_VOLTAGE
         PS.write("VOLT "+str(CALIBRATED_VOLTAGE_IN))
         PS.query("*OPC?")
         time.sleep(0.05)
@@ -180,26 +181,6 @@ def Nominal_Load_Performance(DMM: Resource, PS: Resource, INITIAL_START_UP_VOLTA
     final_output = None
     #readback data and then unpack
     if debug_nstab:
-        #strangely behaving here
-        '''Steps the voltage fast'''
-        DMM.write("*RST")
-        PS.write("*RST")
-        PS.write("INST CH1")
-        PS.write("VOLT " + str(CALIBRATED_VOLTAGE_IN))
-        DMM.write("*RST")
-        DMM.write('TRAC:CLE "defbuffer1"')
-        DMM.write('TRAC:POIN 10, "defbuffer1"')
-        print("buffer set")
-
-        DMM.write('FUNC "VOLT:DC"')
-        print("idk")
-        DMM.write('VOLT:DC:NPLC 0.01')
-        DMM.write('ZERO:AUTO OFF')
-        print("auto zering")
-
-        DMM.write('TRIG:LOAD "DurationLoop",1')
-        DMM.write('TRIG:TIM 0.1')
-        DMM.write('TRIG:COUN 10')
 
         time.sleep(2)  # wait before starting acquisition
         DMM.write('INIT')
@@ -219,12 +200,54 @@ def Nominal_Load_Performance(DMM: Resource, PS: Resource, INITIAL_START_UP_VOLTA
         test_output["nominal_load_performance"] = "FAIL"
         return False
 
-def Input_and_Ouput_Cold( DMM: Resource, PS: Resource,OUTPUT_VOLTAGE: float, INPUT_CURRENT:float,
-                          test_ouput) -> bool:
+def Input_and_Ouput_Cold( DMM: Resource, PS: Resource,CALIBRATED_VOLTAGE_IN:float,
+                          COLD_V,COLD_C,
+                          test_output) -> bool:
     '''4.3.2'''
-    return True
+    #essentially a copy of the warm version with lower params
+    PS.write("INST CH1")
+    PS.write("VOLT " + str(CALIBRATED_VOLTAGE_IN))
+    PS.write("CURR 0.050")
+    PS.write("OUTP ON")
 
-def Input_Voltage_Step(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN: float):
+    PS.query("*OPC?")  # checks if the power supply is all correct
+    sample_volts = []  # actual sampling process on ch3, avg 10 samps in 1 sec
+    DMM.write("ROUT:MULT:CLOS (@3)")
+    for i in range(10):
+        sample_volts.append(float(DMM.query("READ?")))
+        time.sleep(0.1)
+    DMM.write("ROUT:MULT:OPEN (@3)")
+
+    sample_mamps = []  # same proc on ch 2 for current
+    DMM.write("ROUT:MULT:CLOS (@2)")
+    for i in range(10):
+        sample_mamps.append(float(DMM.query("READ?")))
+        time.sleep(0.1)
+    DMM.write("ROUT:MULT:OPEN (@2)")
+
+    test_result = round(np.mean(sample_volts), 3)
+    test_result2 = round(np.mean(sample_mamps), 3)
+    if debug:
+        print("voltage debug results:")
+        print(sample_volts)
+        print(test_result)
+        print("current debug results:")
+        print(sample_mamps)
+        print(test_result2)
+
+    #append to df
+    test_output["initial_cold_voltage"] = test_result
+    test_output["initial_cold_current"] = test_result2
+    if (test_result <= COLD_V[1] and test_result >= COLD_V[0]
+            and test_result2 <= COLD_C[1] and test_result2 >= COLD_C[0]):
+        test_output["input_current_output_voltage"] = "PASS"
+        return True
+    test_output["input_current_output_voltage"] = "FAIL"
+    return False
+
+def Input_Voltage_Step(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN: float,
+                       VOLTAGE_RANGE, test_output) ->bool:
+    '''4.3.4'''
 
     DMM.write("*RST")
     PS.write("*RST")
@@ -251,14 +274,31 @@ def Input_Voltage_Step(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN: float
     DMM.query('*OPC?')
 
     n = int(DMM.query('TRAC:ACT? "defbuffer1"'))
-    print("samples:", n)
+    if debug:
+        print("samples:", n)
 
     if n > 0:
         data = DMM.query(f'TRAC:DATA? 1,{n},"defbuffer1",READ')
         datalist = list(data.split(','))
-        print(datalist)
+        if debug:
+            print(datalist)
         #mangled scipi formatting, had to do it manually
         datalist = [round(float(datalist[i][:datalist[i].index("E")])*10**int(datalist[i][datalist[i].index("E")+1:]),5)
                     for i in range(len(datalist))]
-        mp.plot(datalist)
-        mp.show()
+        if show_plots:
+            mp.plot(datalist)
+            mp.xlabel("Time (ms)")
+            mp.ylabel("Voltage (V)")
+            mp.show()
+    else:
+        #errors on this test but does not break the testing loop
+        test_output["input_step_voltage"] = "ERR"
+        return False
+
+    if all([dp <= VOLTAGE_RANGE[1] and dp >=VOLTAGE_RANGE[0] for dp in datalist]):
+        #this is just seeign if none jump out of allowed range
+        test_output["input_step_voltage"] = "PASS"
+        return True
+
+    test_output["input_step_voltage"] = "FAIL"
+    return False

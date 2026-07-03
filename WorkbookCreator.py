@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime
 from openpyxl import load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment
-DB_PATH = "dc_dc_temp3.db"
+DB_PATH = "dc_dc_temp5.db"
 NSTAB_PATH = "dc_dc_nstabtemp.db"
 
 def init_db():
@@ -24,8 +24,9 @@ def init_db():
             nominal_load_performance TEXT,
             output_emi TEXT,
 
-            initial_temperature TEXT,
-            secondary_calibration TEXT,
+            secondary_calibration REAL,
+            initial_cold_voltage REAL,
+            inital_cold_current REAL,
             input_current_output_voltage TEXT,
             output_step_load TEXT,
             input_step_voltage TEXT,
@@ -77,14 +78,15 @@ def insert_test(data):
             input_voltage_sweep,
             nominal_load_performance,
             output_emi,
-            initial_temperature,
             secondary_calibration,
+            initial_cold_voltage,
+            inital_cold_current,
             input_current_output_voltage,
             output_step_load,
             input_step_voltage,
             output_noise_voltage,
             cold_start_up
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,?,?,?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,?, ?, ?,?,?,?)
         """, (
             data["board_id"],
             datetime.now().isoformat(),
@@ -95,8 +97,9 @@ def insert_test(data):
             data["input_voltage_sweep"],
             data["nominal_load_performance"],
             data["output_emi"],
-            data["initial_temperature"],
             data["secondary_calibration"],
+            data["initial_cold_voltage"],
+            data["initial_cold_current"],
             data["input_current_output_voltage"],
             data["output_step_load"],
             data["input_step_voltage"],
@@ -155,7 +158,8 @@ def export_to_excel(output_file=r"C:\Users\StudentAdmin\Desktop\TESTONE.xlsx"):
             "nominal_load_performance": "NOMINAL LOAD PERFORMANCE",
             "output_emi": "OUTPUT EMI",
             "secondary_calibration": "COLD CALIBRATION",
-            "initial_temperature": "INITIAL TEMPERATURE",
+            "initial_cold_voltage":"INITIAL COLD VOLTAGE",
+            "initial_cold_current":"INITIAL COLD CURRENT",
             "input_current_output_voltage": "INITIAL CURRENT OUTPUT VOLTAGE",
             "output_step_load": "OUTPUT STEP LOAD",
             "input_step_voltage": "INPUT STEP VOLTAGE",

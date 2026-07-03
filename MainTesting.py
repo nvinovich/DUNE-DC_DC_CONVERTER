@@ -55,8 +55,9 @@ while test_more_boards_o7:
         "input_voltage_sweep": "NULL",
         "nominal_load_performance": "NULL",
         "output_emi": "NULL",
-        "initial_temperature": "NULL",
-        "secondary_calibration":"NULL",
+        "secondary_calibration":-1,
+        "initial_cold_voltage":-1,
+        "initial_cold_current":-1,
         "input_current_output_voltage": "NULL",
         "output_step_load": "NULL",
         "input_step_voltage": "NULL",
@@ -109,19 +110,15 @@ while test_more_boards_o7:
         print("NOMINAL LOAD STABILIZATION: ", Fore.GREEN + "PASS")
     else:
         print("NOMINAL LOAD STABILIZATION: ", Fore.RED + "FAIL")
-    time.sleep(0.5)
-
-#log final results for this board
-    insert_test(test_output)
-    print(Fore.LIGHTCYAN_EX + "TEST RESULT EXPORTED")
 
     if input(Fore.MAGENTA + "Continue to Cold Testing? (y/n) ").lower() == "y":
         #not entirely needed, but reset just to be safe
+        #what does leaving power on here look like
         PS.write("*RST")
         DMM.write("*RST")
         print("Timer begun for 300 seconds...")
         time.sleep(3)
-        print("Timer end, press ENTER to continue:")
+        input(Fore.MAGENTA +"Timer end, press ENTER to continue")
     else:
         continue
 
@@ -131,7 +128,21 @@ while test_more_boards_o7:
                                         IDEAL_INCOMING_VOLTAGE, CALIBRATED_VOLTAGE_IN)
     test_output["secondary_calibration"] = (str(round(CALIBRATED_VOLTAGE_IN,5)) +
                                          " IN "+"/ "+str(round(inboard,5)) + " OUT")
+#4.3.2
+    if Input_and_Ouput_Cold(DMM,PS,CALIBRATED_VOLTAGE_IN,
+                            OUTPUT_VOLTAGE_COLD,INPUT_CURRENT_COLD,test_output):
+        print("INITIAL COLD INPUT/OUTPUT: ", Fore.GREEN + "PASS")
+    else:
+        print("INITIAL COLD INPUT/OUTPUT: ", Fore.RED + "FAIL")
+#4.3.4
+    if Input_Voltage_Step(DMM,PS,CALIBRATED_VOLTAGE_IN,INITIAL_START_UP_VOLTAGE,test_output):
+        print("INPUT VOLTAGE STEP: ", Fore.GREEN + "PASS")
+    else:
+        print("INPUT VOLTAGE STEP: ", Fore.RED + "FAIL")
 
+#log final results for this board
+    insert_test(test_output)
+    print(Fore.LIGHTCYAN_EX + "TEST RESULT EXPORTED")
 
 #safely close resources i hope
 PS.write("*RST")
