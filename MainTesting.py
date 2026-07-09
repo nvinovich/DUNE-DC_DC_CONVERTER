@@ -10,7 +10,7 @@ init(autoreset=True)
 
 #init dbs if not already
 init_db()
-init_nstab_db()
+init_trace_db()
 Utilities.DUNE_ASCII()
 
 #====================================================TESTING PARAMS====================================================#
@@ -22,7 +22,7 @@ CALIBRATED_VOLTAGE_IN = 5.0
 INITIAL_START_UP_VOLTAGE = [58.0,61.0]
 INITIAL_START_UP_CURRENT = [-0.035,-0.033]
 #4.2.2
-#4.3.2
+#4.3.5
 OUTPUT_VOLTAGE_COLD = [48.0,50.0]#ask mike hwy this is a tigheter range
 INPUT_CURRENT_COLD = [-0.025,-0.027]
 #======================================================================================================================#
@@ -63,18 +63,12 @@ while test_more_boards_o7:
         "output_noise_voltage": "NULL",
         "cold_start_up": "NULL",
     }
-    nstab_test_output = {
-        "board_id": "NA",
-        "n0":-1,
-        "n1":-1,
-        "n2":-1,
-        "n3":-1,
-        "n4":-1,
-        "n5": -1,
-        "n6": -1,
-        "n7": -1,
-        "n8": -1,
-        "n9": -1
+    trace_output = {
+        "input_voltage_sweep_trace": [],
+        "nominal_load_trace": [],
+        "output_step_load_trace": [],
+        "input_step_voltage_trace": [],
+        "cold_start_up_trace": []
     }
 
 #reset power supply, ask user to replace board
@@ -97,23 +91,28 @@ while test_more_boards_o7:
                                              " IN "+"/ "+str(round(inboard,5)) + " OUT")
     #4.2.1
         if Initial_Start_Up_Test(DMM, PS, INITIAL_START_UP_VOLTAGE,INITIAL_START_UP_CURRENT,
-                                 CALIBRATED_VOLTAGE_IN, test_output):
+                                 CALIBRATED_VOLTAGE_IN, test_output,trace_output):
             print("INITIAL START UP: ", Fore.GREEN + "PASS")
         else:
             print("INITIAL START UP: ", Fore.RED + "FAIL")
     #4.2.2
         time.sleep(0.5)
-        if Input_Voltage_Sweep(DMM, PS, INITIAL_START_UP_VOLTAGE, CALIBRATED_VOLTAGE_IN, test_output):
+        if Input_Voltage_Sweep(DMM, PS, INITIAL_START_UP_VOLTAGE,
+                               CALIBRATED_VOLTAGE_IN, test_output,trace_output):
             print("INPUT VOLTAGE SWEEP: ", Fore.GREEN + "PASS")
         else:
             print("INPUT VOLTAGE SWEEP: ", Fore.RED + "FAIL")
     #4.2.3
         time.sleep(0.5)
         if Nominal_Load_Performance(DMM, PS, INITIAL_START_UP_VOLTAGE, CALIBRATED_VOLTAGE_IN,
-                                    test_output,nstab_test_output):
+                                    test_output,trace_output):
             print("NOMINAL LOAD STABILIZATION: ", Fore.GREEN + "PASS")
         else:
             print("NOMINAL LOAD STABILIZATION: ", Fore.RED + "FAIL")
+
+    #save trace data for warm testing
+    insert_warm_traces(test_output["board_id"], trace_output["startup_trace"],
+                       trace_output["input_voltage_sweep_trace"])
     #that should be it for the warm loop, then ask user if continue to cold testing
 
     if input(Fore.MAGENTA + "Continue to Cold Testing? (y/n) ").lower() == "y":
@@ -125,6 +124,8 @@ while test_more_boards_o7:
         time.sleep(3)
         input(Fore.MAGENTA +"Timer end, press ENTER to continue")
     else:
+        insert_test(test_output)
+        print(Fore.LIGHTCYAN_EX + "PARTIAL TEST RESULTS EXPORTED")
         continue
 
 #secondary calibration for cold testing
@@ -135,24 +136,26 @@ while test_more_boards_o7:
                                          " IN "+"/ "+str(round(inboard,5)) + " OUT")
 #4.3.2
     if Input_and_Ouput_Cold(DMM,PS,CALIBRATED_VOLTAGE_IN,
-                            OUTPUT_VOLTAGE_COLD,INPUT_CURRENT_COLD,test_output):
+                            OUTPUT_VOLTAGE_COLD,INPUT_CURRENT_COLD,test_output,trace_output):
         print("INITIAL COLD INPUT/OUTPUT: ", Fore.GREEN + "PASS")
     else:
         print("INITIAL COLD INPUT/OUTPUT: ", Fore.RED + "FAIL")
 #4.3.3
-    if  Output_Step_Load(DMM,PS,CALIBRATED_VOLTAGE_IN,OUTPUT_VOLTAGE_COLD ,test_output):
+    if  Output_Step_Load(DMM,PS,CALIBRATED_VOLTAGE_IN,OUTPUT_VOLTAGE_COLD ,test_output,trace_output):
         print("OUTPUT STEP VOLTAGE: "+ Fore.GREEN + "PASS")
     else:
         print("OUTPUT STEP VOLTAGE: "+ Fore.RED + "FAIL")
 #4.3.4
-    if Input_Voltage_Step(DMM,PS,CALIBRATED_VOLTAGE_IN,OUTPUT_VOLTAGE_COLD,test_output):
+    if Input_Voltage_Step(DMM,PS,CALIBRATED_VOLTAGE_IN,OUTPUT_VOLTAGE_COLD,test_output,trace_output):
         print("INPUT VOLTAGE STEP: ", Fore.GREEN + "PASS")
     else:
         print("INPUT VOLTAGE STEP: ", Fore.RED + "FAIL")
 
 #log final results for this board
-    insert_test(test_output)
-    print(Fore.LIGHTCYAN_EX + "TEST RESULT EXPORTED")
+    update_cold_test(test_output)
+    update_cold_traces(test_output["board_id"], test_output["cold_start_up_trace"],
+                       test_output["output_step_load_trace"],test_output["input_step_voltage_trace"])
+    print(Fore.LIGHTCYAN_EX + "TEST RESULTS EXPORTED")
 
 #safely close resources i hope
 PS.write("*RST")
