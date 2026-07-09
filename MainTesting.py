@@ -86,6 +86,7 @@ while test_more_boards_o7:
     input(Fore.MAGENTA + "Confirm that all power supply channels are OFF by pressing ENTER")
     input(Fore.MAGENTA + "Replace current board with next, press ENTER to continue")
     test_output["board_id"] = input(Fore.MAGENTA + "Board ID: ")
+#come up with a way to check db to see if this output is already warm tested.
 
 #calibration of incoming voltage
     CALIBRATED_VOLTAGE_IN, inboard = Calibrate_to_Ideal_Incoming_Voltage(DMM, PS,
