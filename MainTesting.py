@@ -134,8 +134,13 @@ while test_more_boards_o7:
         print("INITIAL COLD INPUT/OUTPUT: ", Fore.GREEN + "PASS")
     else:
         print("INITIAL COLD INPUT/OUTPUT: ", Fore.RED + "FAIL")
+#4.3.3
+    if  Output_Step_Load(DMM,PS,CALIBRATED_VOLTAGE_IN,OUTPUT_VOLTAGE_COLD ,test_output):
+        print("OUTPUT STEP VOLTAGE: "+ Fore.GREEN + "PASS")
+    else:
+        print("OUTPUT STEP VOLTAGE: "+ Fore.RED + "FAIL")
 #4.3.4
-    if Input_Voltage_Step(DMM,PS,CALIBRATED_VOLTAGE_IN,INITIAL_START_UP_VOLTAGE,test_output):
+    if Input_Voltage_Step(DMM,PS,CALIBRATED_VOLTAGE_IN,OUTPUT_VOLTAGE_COLD,test_output):
         print("INPUT VOLTAGE STEP: ", Fore.GREEN + "PASS")
     else:
         print("INPUT VOLTAGE STEP: ", Fore.RED + "FAIL")

@@ -252,7 +252,7 @@ def Input_Voltage_Step(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN: float
     DMM.write("*RST")
     PS.write("*RST")
     PS.write("INST CH1")
-    PS.write("VOLT 5")
+    PS.write("VOLT " + str(CALIBRATED_VOLTAGE_IN))
     PS.write("CURR 0.05")
     PS.write("OUTP ON")
     time.sleep(3)
@@ -268,7 +268,7 @@ def Input_Voltage_Step(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN: float
     DMM.write('INIT')
     time.sleep(0.5)
 
-    PS.write("VOLT 5.1")
+    PS.write("VOLT " +str(CALIBRATED_VOLTAGE_IN +.1))
 
     #let me know when done, will throw all sorts of errors if something in the setup isnt perfect
     DMM.query('*OPC?')
@@ -302,3 +302,57 @@ def Input_Voltage_Step(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN: float
 
     test_output["input_step_voltage"] = "FAIL"
     return False
+
+def Output_Step_Load(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V, test_output) ->bool:
+    '''4.3.3'''
+    DMM.write("*RST")
+    DMM.write("ROUT:MULT:CLOS (@3)")
+    PS.write("*RST")
+    #activates channel relay for 1 mohm
+    PS.write("INST CH1")
+    PS.write("VOLT " + str(CALIBRATED_VOLTAGE_IN))
+    PS.write("CURR 0.050")
+    PS.write("OUTP ON")
+
+    #this takes 100 measurements in 2 sec, just as above
+    #if all fall within stable range within the time they are good.
+    DMM.write('FUNC "VOLT:DC"')
+    DMM.write("ROUT:MULT:CLOS (@3)")
+    DMM.write('TRAC:CLE "defbuffer1"')
+    DMM.write('TRAC:POIN 100')
+    DMM.write('TRIG:LOAD "SimpleLaoop",100,0.02')
+
+    DMM.write('INIT')
+    time.sleep(0.5)
+
+    PS.write("INST CH2")
+    PS.write("VOLT 5")  #again, this is fine to be any voltage around 5 as long as it opens the relay
+    PS.write("CURR 0.200")
+    PS.write("OUTP ON")
+    PS.query("*OPC?")
+
+    #let me know when done
+    DMM.query('*OPC?')
+    #same traceback and rformatting as other testing blocks
+    n = int(DMM.query('TRAC:ACT? "defbuffer1"'))
+    if debug:
+        print("samples:", n)
+
+    if n > 0:
+        data = DMM.query(f'TRAC:DATA? 1,{n},"defbuffer1",READ')
+        datalist = list(data.split(','))
+        if debug:
+            print(datalist)
+        # mangled scipi formatting, had to do it manually
+        datalist = [
+            round(float(datalist[i][:datalist[i].index("E")]) * 10 ** int(datalist[i][datalist[i].index("E") + 1:]), 5)
+            for i in range(len(datalist))]
+    else:
+        test_output["output_step_voltage"] = "ERR" #error but do not throw if bad output
+
+    if all([dp <=COLD_V[1] and dp >=COLD_V[0] for dp in datalist]):
+        test_output["output_step_voltage"] = "PASS"
+        return True
+    else:
+        test_output["output_step_voltage"] = "FAIL"
+        return False
