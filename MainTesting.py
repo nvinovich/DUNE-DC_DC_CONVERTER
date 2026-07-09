@@ -2,9 +2,8 @@ import sys
 import time
 import pyvisa
 from colorama import init, Fore, Back, Style
-from winsound import MB_ICONASTERISK
 import Utilities
-from Utilities import RESOURCE_CONNECTOR
+from Utilities import RESOURCE_CONNECTOR, WARM_TEST_EXISTS
 from WorkbookCreator import *
 from Tests import *
 init(autoreset=True)
@@ -85,32 +84,37 @@ while test_more_boards_o7:
     PS.write("*RST")
     input(Fore.MAGENTA + "Confirm that all power supply channels are OFF by pressing ENTER")
     input(Fore.MAGENTA + "Replace current board with next, press ENTER to continue")
-    test_output["board_id"] = input(Fore.MAGENTA + "Board ID: ")
-#come up with a way to check db to see if this output is already warm tested.
 
-#calibration of incoming voltage
-    CALIBRATED_VOLTAGE_IN, inboard = Calibrate_to_Ideal_Incoming_Voltage(DMM, PS,
-                                        IDEAL_INCOMING_VOLTAGE, CALIBRATED_VOLTAGE_IN)
-    test_output["calibrated_voltage"] = (str(round(CALIBRATED_VOLTAGE_IN,5)) +
-                                         " IN "+"/ "+str(round(inboard,5)) + " OUT")
-#4.2.1
-    if Initial_Start_Up_Test(DMM, PS, INITIAL_START_UP_VOLTAGE,INITIAL_START_UP_CURRENT,
-                             CALIBRATED_VOLTAGE_IN, test_output):
-        print("INITIAL START UP: ", Fore.GREEN + "PASS")
-    else:
-        print("INITIAL START UP: ", Fore.RED + "FAIL")
-#4.2.2
-    time.sleep(0.5)
-    if Input_Voltage_Sweep(DMM, PS, INITIAL_START_UP_VOLTAGE, CALIBRATED_VOLTAGE_IN, test_output):
-        print("INPUT VOLTAGE SWEEP: ", Fore.GREEN + "PASS")
-    else:
-        print("INPUT VOLTAGE SWEEP: ", Fore.RED + "FAIL")
-#4.2.3
-    time.sleep(0.5)
-    if Nominal_Load_Performance(DMM, PS, INITIAL_START_UP_VOLTAGE, CALIBRATED_VOLTAGE_IN, test_output,nstab_test_output):
-        print("NOMINAL LOAD STABILIZATION: ", Fore.GREEN + "PASS")
-    else:
-        print("NOMINAL LOAD STABILIZATION: ", Fore.RED + "FAIL")
+    #this chunk takes a board id and checks to see if db already has warm data, which we will skip if there
+    test_output["board_id"] = input(Fore.MAGENTA + "Board ID: ")
+    Do_Warm_Test = not (test_output["board_id"])
+
+    if Do_Warm_Test:
+    #calibration of incoming voltage
+        CALIBRATED_VOLTAGE_IN, inboard = Calibrate_to_Ideal_Incoming_Voltage(DMM, PS,
+                                            IDEAL_INCOMING_VOLTAGE, CALIBRATED_VOLTAGE_IN)
+        test_output["calibrated_voltage"] = (str(round(CALIBRATED_VOLTAGE_IN,5)) +
+                                             " IN "+"/ "+str(round(inboard,5)) + " OUT")
+    #4.2.1
+        if Initial_Start_Up_Test(DMM, PS, INITIAL_START_UP_VOLTAGE,INITIAL_START_UP_CURRENT,
+                                 CALIBRATED_VOLTAGE_IN, test_output):
+            print("INITIAL START UP: ", Fore.GREEN + "PASS")
+        else:
+            print("INITIAL START UP: ", Fore.RED + "FAIL")
+    #4.2.2
+        time.sleep(0.5)
+        if Input_Voltage_Sweep(DMM, PS, INITIAL_START_UP_VOLTAGE, CALIBRATED_VOLTAGE_IN, test_output):
+            print("INPUT VOLTAGE SWEEP: ", Fore.GREEN + "PASS")
+        else:
+            print("INPUT VOLTAGE SWEEP: ", Fore.RED + "FAIL")
+    #4.2.3
+        time.sleep(0.5)
+        if Nominal_Load_Performance(DMM, PS, INITIAL_START_UP_VOLTAGE, CALIBRATED_VOLTAGE_IN,
+                                    test_output,nstab_test_output):
+            print("NOMINAL LOAD STABILIZATION: ", Fore.GREEN + "PASS")
+        else:
+            print("NOMINAL LOAD STABILIZATION: ", Fore.RED + "FAIL")
+    #that should be it for the warm loop, then ask user if continue to cold testing
 
     if input(Fore.MAGENTA + "Continue to Cold Testing? (y/n) ").lower() == "y":
         #not entirely needed, but reset just to be safe

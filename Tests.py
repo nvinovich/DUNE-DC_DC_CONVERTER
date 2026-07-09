@@ -6,6 +6,7 @@ from colorama import init, Fore, Back, Style
 import numpy as np
 from pyvisa import Resource
 import matplotlib.pyplot as mp
+import pygame as pyg
 
 debug = False #general debug to see more test output
 debug_nstab = False
@@ -218,7 +219,7 @@ def Input_and_Ouput_Cold( DMM: Resource, PS: Resource,CALIBRATED_VOLTAGE_IN:floa
     PS.write("OUTP ON")
 
     PS.query("*OPC?")  # checks if the power supply is all correct
-    sample_volts = []  # actual sampling process on ch3, avg 10 samps in 1 sec
+    sample_volts = []  # actual sa  mpling process on ch3, avg 10 samps in 1 sec
     DMM.write("ROUT:MULT:CLOS (@3)")
     for i in range(10):
         sample_volts.append(float(DMM.query("READ?")))
@@ -301,6 +302,8 @@ def Input_Voltage_Step(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN: float
         #errors on this test but does not break the testing loop
         test_output["input_step_voltage"] = "ERR"
         return False
+    if debug:
+        print("final debug voltage for step voltage test ", datalist[-1])
 
     if all([dp <= VOLTAGE_RANGE[1] and dp >=VOLTAGE_RANGE[0] for dp in datalist]):
         #this is just seeign if none jump out of allowed range
@@ -357,6 +360,8 @@ def Output_Step_Load(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V,
     else:
         test_output["output_step_voltage"] = "ERR" #error but do not throw if bad output
         return False
+    if debug:
+        print("final step voltage ", datalist[-1])
 
     if all([dp <=COLD_V[1] and dp >=COLD_V[0] for dp in datalist]):
         test_output["output_step_voltage"] = "PASS"
@@ -367,6 +372,7 @@ def Output_Step_Load(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V,
 
 def Cold_Startup_Test(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V, test_output) -> bool:
     '''4.3.5'''
+    #this test is just the warm start up but with cold specs
     PS.write("*RST")
     DMM.write("*RST")
     #have user manually do these steps
@@ -391,3 +397,25 @@ def Cold_Startup_Test(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V
     time.sleep(0.5)
     PS.write("OUTP ON")
 
+    n = int(DMM.query('TRAC:ACT? "defbuffer1"'))
+    if debug:
+        print("samples ", n)
+    if not n>0:
+        #throw soft err if no data
+        test_output["cold_startup"] = "ERR"
+        return False
+    #same proc for parsing data as other testing blocks
+    data = DMM.query(f'TRAC:DATA? 1,{n},"defbuffer1",READ')
+    datalist = list(data.split(','))
+    if debug:
+        print(datalist)
+    datalist = [
+        round(float(datalist[i][:datalist[i].index("E")]) * 10 ** int(datalist[i][datalist[i].index("E") + 1:]),
+              5) for i in range(len(datalist))]
+
+    if show_plots:
+        mp.plot(datalist)
+        mp.xlabel("Time (ms)")
+        mp.ylabel("Voltage (V)")
+        mp.title("Cold Startup Test")
+        mp.show()
