@@ -1,78 +1,15 @@
-import sys
 import time
 import pyvisa
-import winsound
 from colorama import init, Fore, Back, Style
+init(autoreset=True)
 import numpy as np
 from pyvisa import Resource
 import matplotlib.pyplot as mp
-import pygame as pyg
-
-debug = False #general debug to see more test output
 show_plots = True
-init(autoreset=True)
-
-def Calibrate_to_Ideal_Incoming_Voltage(  DMM: Resource, PS: Resource, IDEAL_INCOMING_VOLTAGE: float,
-                                        CALIBRATED_VOLTAGE_IN: float) -> (float,float):
-    '''Makes minimal adjustments to get incoming voltage to 5 volts with up to 0.01 VOLT error'''
-    #reset calibrated voltage
-    CALIBRATED_VOLTAGE_IN = 5.0
-    PS.write("INST CH1")
-    PS.write("VOLT "+str(CALIBRATED_VOLTAGE_IN))
-    PS.write("CURR 0.050")
-    PS.write("OUTP ON")
-    #now its on, make adj if not in range
-    PS.query("*OPC?")
-    time.sleep(0.3)
-
-    DMM.write("ROUT:MULT:CLOS (@1)")
-
-    incoming_volts = float(DMM.query("READ?"))
-
-    if debug:
-        print(incoming_volts)
-    else:
-        print("CALIBRATING INPUT VOLTAGE...")
-    start_time = time.time()
-    #this will try and calibrate voltage
-    tolerance = 0.01 #tolerance in volts
-    Calibration_Timeout = 400
-    while abs(incoming_volts - IDEAL_INCOMING_VOLTAGE) > tolerance:
-        #throws an error and safely shuts down upon time out
-        if Calibration_Timeout <=0:
-            DMM.write("*RST")
-            PS.write("*RST")
-            final_time = round(time.time() - start_time, 3)
-            winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
-            sys.exit("AUTOCALIBRATION FAILED DUE TO TIMEOUT AT " + str(final_time) + " SEC.")
-        if debug:
-            print(CALIBRATED_VOLTAGE_IN)
-            print("error of " + str(abs(incoming_volts - IDEAL_INCOMING_VOLTAGE)))
-
-        if (incoming_volts - IDEAL_INCOMING_VOLTAGE) >= tolerance:
-            #if error >=
-            CALIBRATED_VOLTAGE_IN -=0.00025*IDEAL_INCOMING_VOLTAGE
-        if (incoming_volts - IDEAL_INCOMING_VOLTAGE) <= -tolerance:
-            CALIBRATED_VOLTAGE_IN +=0.00025*IDEAL_INCOMING_VOLTAGE
-        PS.write("VOLT "+str(CALIBRATED_VOLTAGE_IN))
-        PS.query("*OPC?")
-        time.sleep(0.05)
-
-        incoming_volts = float(DMM.query("READ?"))
-        Calibration_Timeout -=1
-
-    if debug:
-        print("final input v of " + str(CALIBRATED_VOLTAGE_IN) + " which gives board input of " + str(incoming_volts))
-        final_time = round(time.time() - start_time,3)
-        print(Back.LIGHTCYAN_EX + Fore.BLACK + str(final_time) + " sec. elapsed in calibration")
-    else:
-        print("INPUT VOLTAGE CALIBRATED TO " + Fore.GREEN + str(round(CALIBRATED_VOLTAGE_IN,5)), "VOLTS")
-    DMM.write("*RST")
-    return CALIBRATED_VOLTAGE_IN, incoming_volts
 
 def Initial_Start_Up_Test( DMM: Resource, PS: Resource,
                             INITIAL_START_UP_VOLTAGE: list[float], INITIAL_START_UP_CURRENT: list[float],
-                            CALIBRATED_VOLTAGE_IN:float, test_output, trace_ouput) -> bool:
+                            CALIBRATED_VOLTAGE_IN:float, test_output, trace_ouput,debug:bool) -> bool:
     '''4.2.1 DCDC CONVERTER DOC'''
     #NOW UPDATED FOR MULTICHANNEL DMM BOARDS ONLY
     PS.write("INST CH1")
@@ -119,7 +56,8 @@ def Initial_Start_Up_Test( DMM: Resource, PS: Resource,
     return False
 
 def Input_Voltage_Sweep(DMM: Resource, PS: Resource, INITIAL_START_UP_VOLTAGE: list[float],
-                        CALIBRATED_VOLTAGE_IN:float, test_output, trace_output) -> bool:
+                        CALIBRATED_VOLTAGE_IN:float, test_output,
+                        trace_output,debug:bool) -> bool:
     '''4.2.2 DCDC CONVERTER DOC'''
 
     #sets lower bound of calibrated voltage
@@ -152,7 +90,7 @@ def Input_Voltage_Sweep(DMM: Resource, PS: Resource, INITIAL_START_UP_VOLTAGE: l
         round(float(datalist[i][:datalist[i].index("E")]) * 10 ** int(datalist[i][datalist[i].index("E") + 1:]),
               5) for i in range(len(datalist))]
 
-    trace_output["initial_voltage_sweep_trace"] = datalist
+    trace_output["input_voltage_sweep_trace"] = datalist
     for i in range(100):
         mean_val = datalist[i]
         if mean_val <= INITIAL_START_UP_VOLTAGE[0] or mean_val >= INITIAL_START_UP_VOLTAGE[1]:
@@ -163,7 +101,7 @@ def Input_Voltage_Sweep(DMM: Resource, PS: Resource, INITIAL_START_UP_VOLTAGE: l
     return True
 
 def Nominal_Load_Performance(DMM: Resource, PS: Resource, VOLTAGE_RANGE: list[float],
-                        CALIBRATED_VOLTAGE_IN:float, test_output, trace_output) -> bool:
+                        CALIBRATED_VOLTAGE_IN:float, test_output, trace_output,debug:bool) -> bool:
     '''4.2.3 DCDC CONVERTER DOC'''
     #this will make semi-cont measurements and return based on final perf.
     DMM.write("*RST")
@@ -215,7 +153,8 @@ def Nominal_Load_Performance(DMM: Resource, PS: Resource, VOLTAGE_RANGE: list[fl
         return False
 
 def Input_and_Ouput_Cold( DMM: Resource, PS: Resource,CALIBRATED_VOLTAGE_IN:float,
-                          COLD_V,COLD_C,test_output, trace_output) -> bool:
+                          COLD_V,COLD_C,test_output,
+                          trace_output,debug:bool) -> bool:
     '''4.3.2'''
     #essentially a copy of the warm version with lower params
     PS.write("INST CH1")
@@ -259,7 +198,8 @@ def Input_and_Ouput_Cold( DMM: Resource, PS: Resource,CALIBRATED_VOLTAGE_IN:floa
     return False
 
 def Input_Voltage_Step(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN: float,
-                       VOLTAGE_RANGE, test_output, trace_output) ->bool:
+                       VOLTAGE_RANGE, test_output,
+                       trace_output, debug:bool) ->bool:
     '''4.3.4'''
 
     DMM.write("*RST")
@@ -321,7 +261,7 @@ def Input_Voltage_Step(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN: float
     return False
 
 def Output_Step_Load(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V,
-                     test_output, trace_output) ->bool:
+                     test_output, trace_output,debug:bool) ->bool:
     '''4.3.3'''
     DMM.write("*RST")
     DMM.write("ROUT:MULT:CLOS (@3)")
@@ -338,7 +278,7 @@ def Output_Step_Load(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V,
     DMM.write("ROUT:MULT:CLOS (@3)")
     DMM.write('TRAC:CLE "defbuffer1"')
     DMM.write('TRAC:POIN 100')
-    DMM.write('TRIG:LOAD "SimpleLaoop",100,0.02')
+    DMM.write('TRIG:LOAD "SimpleLoop",100,0.02')
 
     DMM.write('INIT')
     time.sleep(0.5)
@@ -380,7 +320,7 @@ def Output_Step_Load(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V,
         return False
 
 def Cold_Startup_Test(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V,
-                      test_output,trace_output) -> bool:
+                      test_output,trace_output,debug:bool) -> bool:
     '''4.3.5'''
     #this test is just the warm start up but with cold specs
     PS.write("*RST")
@@ -431,7 +371,7 @@ def Cold_Startup_Test(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V
         mp.show()
 
     #saves data and trace
-    trace_output["cold_start_up_trace"] = datalist
+    trace_output["cold_startup_trace"] = datalist
     if all([dp <=COLD_V[1] and dp >=COLD_V[0] for dp in datalist]):
         test_output["cold_startup"] = "PASS"
         return True

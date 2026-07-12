@@ -2,13 +2,15 @@ import sys
 import time
 import winsound
 import sqlite3
-
+import serial
+from serial.tools import list_ports
 from colorama import init, Fore, Back, Style
+init(autoreset=True)
 import pyvisa
-import numpy as np
 from pyvisa import Resource
 from WorkbookCreator import DB_PATH
-from Tests import Input_Voltage_Step
+
+#this is a set of quality of life and connection utilities which would mainly be clutter in the other files
 
 def DUNE_ASCII():
     print(Fore.MAGENTA +" ▄▄▄▄▄▄   ▄▄▄  ▄▄▄ ▄▄▄    ▄▄▄  ▄▄▄▄▄▄▄\n",
@@ -20,9 +22,7 @@ def DUNE_ASCII():
 
 def RESOURCE_CONNECTOR(RM)->(Resource,Resource):
     '''CONNECTS DMM THEN PS'''
-    print("Checking for resources...")
     resources = RM.list_resources()
-
     if len(resources) == 0:
         sys.exit("No resources found.")
 
@@ -46,17 +46,19 @@ def RESOURCE_CONNECTOR(RM)->(Resource,Resource):
 
             if model == "MODEL DMM6500":
                 DMM = device
-                print(Fore.MAGENTA+"DMM connected:", idn)
+                print(Fore.MAGENTA+"DMM connected:", manufacturer+", "+model+" "+serial)
 
             elif model == "E36312A":
                 PS = device
-                print(Fore.MAGENTA+"PS connected:", idn)
+                print(Fore.MAGENTA+"PS connected:", manufacturer+", "+model+" "+serial)
         except Exception:
             continue
 
     if DMM is None:
+        RM.close()
         sys.exit("No digital multimeter found.")
     if PS is None:
+        RM.close()
         sys.exit("No power supply found.")
 
     return DMM, PS
@@ -81,11 +83,105 @@ def WARM_TEST_EXISTS(board_id: str) ->bool:
     #if all three tests have been completed
     return all(value not in (None, "NULL") for value in row)
 
-if __name__ =='__main__':
-    #just a debug script for the data buffer proc
-    RM = pyvisa.ResourceManager()
-    DMM, PS = RESOURCE_CONNECTOR(RM)
+def SERIAL_CONNECTOR(baudrate=19200,timeout=1):
+    '''Checks all COM channels for serial connection to relay board'''
+    RELAY = None
+    rport = None
+    ports = list_ports.comports()
+    #this might be overkill but check all ports until we find a valid connection
+    for port in ports:
+        if "Numato" in port.description:
+            try:
+                time.sleep(1) #allows for init time on device
+                RELAY = serial.Serial(port.device, baudrate, timeout=timeout)
+                rport = port
+                break
+            except serial.SerialException:
+                pass
+        if "USB Serial" in port.description:
+            try:
+                time.sleep(1)
+                RELAY = serial.Serial(port.device, baudrate, timeout=timeout)
+                rport = port
+                break
+            except serial.SerialException:
+                pass
 
-    Input_Voltage_Step(DMM, PS,5)
+    #if no valid connection, throw
+    if RELAY != None:
+        print(Fore.MAGENTA + "RELAY connected: ", rport.description)
+        RELAY.write(b"relay off 0\r")
+        RELAY.write(b"relay off 1\r")
+        RELAY.write(b"relay off 2\r")
+        RELAY.write(b"relay off 3\r")
+        return RELAY
+    sys.exit("No serial relay connection found.")
 
-    RM.close()
+def AUTOCALIBRATE_TO_IDEAL_INCOMING_VOLTAGE(  DMM: Resource, PS: Resource, IDEAL_INCOMING_VOLTAGE: float,
+                                        CALIBRATED_VOLTAGE_IN: float,debug:bool) -> (float,float):
+    '''Makes minimal adjustments to get incoming voltage to 5 volts with up to 0.01 VOLT error'''
+    #reset calibrated voltage
+    CALIBRATED_VOLTAGE_IN = 5.0
+    PS.write("INST CH1")
+    PS.write("VOLT "+str(CALIBRATED_VOLTAGE_IN))
+    PS.write("CURR 0.050")
+    PS.write("OUTP ON")
+    #now its on, make adj if not in range
+    PS.query("*OPC?")
+    time.sleep(0.3)
+
+    DMM.write("ROUT:MULT:CLOS (@1)")
+
+    incoming_volts = float(DMM.query("READ?"))
+
+    if debug:
+        print(incoming_volts)
+    else:
+        print("CALIBRATING INPUT VOLTAGE...")
+    start_time = time.time()
+    #this will try and calibrate voltage
+    tolerance = 0.01 #tolerance in volts
+    Calibration_Timeout = 400
+    while abs(incoming_volts - IDEAL_INCOMING_VOLTAGE) > tolerance:
+        #throws an error and safely shuts down upon time out
+        if Calibration_Timeout <=0:
+            DMM.write("*RST")
+            PS.write("*RST")
+            final_time = round(time.time() - start_time, 3)
+            winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
+            sys.exit("AUTOCALIBRATION FAILED DUE TO TIMEOUT AT " + str(final_time) + " SEC.")
+        if debug:
+            print(CALIBRATED_VOLTAGE_IN)
+            print("error of " + str(abs(incoming_volts - IDEAL_INCOMING_VOLTAGE)))
+
+        if (incoming_volts - IDEAL_INCOMING_VOLTAGE) >= tolerance:
+            #if error >=
+            CALIBRATED_VOLTAGE_IN -=0.0025*IDEAL_INCOMING_VOLTAGE
+        if (incoming_volts - IDEAL_INCOMING_VOLTAGE) <= -tolerance:
+            CALIBRATED_VOLTAGE_IN +=0.0025*IDEAL_INCOMING_VOLTAGE
+        PS.write("VOLT "+str(CALIBRATED_VOLTAGE_IN))
+        PS.query("*OPC?")
+        time.sleep(0.05)
+
+        incoming_volts = float(DMM.query("READ?"))
+        Calibration_Timeout -=1
+
+    if debug:
+        print("final input v of " + str(CALIBRATED_VOLTAGE_IN) + " which gives board input of " + str(incoming_volts))
+        final_time = round(time.time() - start_time,3)
+        print(Back.LIGHTCYAN_EX + Fore.BLACK + str(final_time) + " sec. elapsed in calibration")
+    else:
+        print("INPUT VOLTAGE CALIBRATED TO " + Fore.GREEN + str(round(CALIBRATED_VOLTAGE_IN,5)), "VOLTS")
+    DMM.write("*RST")
+    return CALIBRATED_VOLTAGE_IN, incoming_volts
+
+if __name__ == "__main__":
+#just sample code to test relay writing and response, it doesnt work yet
+    RELAY = SERIAL_CONNECTOR()
+    bits = bin(13)[2:].zfill(4)
+
+    for channel,state in enumerate(reversed(bits)):
+        print(f"Relay {channel}: {'ON' if state == '1' else 'OFF'}")
+    RELAY.write(b"relay off 2\n\r")
+    for channel, state in enumerate(reversed(bits)):
+        print(f"Relay {channel}: {'ON' if state == '1' else 'OFF'}")
