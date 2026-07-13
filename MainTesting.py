@@ -1,7 +1,3 @@
-import sys
-import time
-import pyvisa
-import serial
 from colorama import init, Fore, Back, Style
 init(autoreset=True)
 import Utilities
@@ -45,7 +41,7 @@ DMM.write("SENS:FUNC 'VOLT:DC'")
 PS.write("*RST")
 
 #testing loop:
-test_output = {}
+first = True
 test_more_boards_o7 = True
 while test_more_boards_o7:
 #starts storing data for next board
@@ -76,7 +72,9 @@ while test_more_boards_o7:
     }
 
 #reset power supply, ask user to replace board
-    if input(Fore.MAGENTA + "Test Next Board? (y/n) ").lower() != "y":
+    if first == True:
+        first = False
+    elif input(Fore.MAGENTA + "Test Next Board? (y/n) ").lower() != "y":
         test_more_boards_o7 = False
         break
     PS.write("*RST")
@@ -124,8 +122,12 @@ while test_more_boards_o7:
         #what does leaving power on here look like
         PS.write("*RST")
         DMM.write("*RST")
+        input(Fore.MAGENTA + "Submerge board in liquid argon for 300 seconds, press ENTER to start timer:")
         print("Timer begun for 300 seconds...")
-        time.sleep(3)
+        if debug:
+            time.sleep(3)
+        else:
+            time.sleep(300)
         input(Fore.MAGENTA +"Timer end, press ENTER to continue")
     else:
         print(Fore.LIGHTCYAN_EX + "PARTIAL TEST RESULTS EXPORTED")
@@ -143,13 +145,21 @@ while test_more_boards_o7:
         print("INITIAL COLD INPUT/OUTPUT: ", Fore.GREEN + "PASS")
     else:
         print("INITIAL COLD INPUT/OUTPUT: ", Fore.RED + "FAIL")
+    time.sleep(0.5)
 #4.3.3
     if  Output_Step_Load(DMM,PS,CALIBRATED_VOLTAGE_IN,OUTPUT_VOLTAGE_COLD ,test_output,trace_output,debug):
         print("OUTPUT STEP VOLTAGE: "+ Fore.GREEN + "PASS")
     else:
         print("OUTPUT STEP VOLTAGE: "+ Fore.RED + "FAIL")
+    time.sleep(0.5)
 #4.3.4
     if Input_Voltage_Step(DMM,PS,CALIBRATED_VOLTAGE_IN,OUTPUT_VOLTAGE_COLD,test_output,trace_output,debug):
+        print("INPUT VOLTAGE STEP: ", Fore.GREEN + "PASS")
+    else:
+        print("INPUT VOLTAGE STEP: ", Fore.RED + "FAIL")
+#4.3.6
+    time.sleep(0.5)
+    if Cold_Startup_Test(DMM,PS,CALIBRATED_VOLTAGE_IN,OUTPUT_VOLTAGE_COLD,test_output,trace_output,debug):
         print("INPUT VOLTAGE STEP: ", Fore.GREEN + "PASS")
     else:
         print("INPUT VOLTAGE STEP: ", Fore.RED + "FAIL")
@@ -159,6 +169,7 @@ while test_more_boards_o7:
     update_cold_traces(test_output["board_id"], trace_output["cold_startup_trace"],
                        trace_output["output_step_load_trace"],trace_output["input_step_voltage_trace"])
     print(Fore.LIGHTCYAN_EX + "TEST RESULTS EXPORTED")
+    DMM.write("*CLS")
 
 #safely close resources i hope
 PS.write("*RST")

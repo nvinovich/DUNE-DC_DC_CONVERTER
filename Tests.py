@@ -5,7 +5,7 @@ init(autoreset=True)
 import numpy as np
 from pyvisa import Resource
 import matplotlib.pyplot as mp
-show_plots = True
+show_plots = False
 
 def Initial_Start_Up_Test( DMM: Resource, PS: Resource,
                             INITIAL_START_UP_VOLTAGE: list[float], INITIAL_START_UP_CURRENT: list[float],
@@ -19,7 +19,7 @@ def Initial_Start_Up_Test( DMM: Resource, PS: Resource,
 
     PS.query("*OPC?")   #checks if the power supply is all correct
 
-    time.sleep(0.3) ####ASK MIKE ABOUT THIS STARTUP DELAY, SHOULD IT BE INSTANT?
+    time.sleep(0.3) ####ASK MIKE README THIS STARTUP DELAY, SHOULD IT BE INSTANT?
 
     sample_volts = []         #actual sampling process on ch3, avg 10 samps in 1 sec
     DMM.write("ROUT:MULT:CLOS (@3)")
@@ -328,9 +328,9 @@ def Cold_Startup_Test(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V
     #have user manually do these steps
     input(Fore.MAGENTA + "Confirm that all power supply channels are OFF by pressing ENTER")
     input(Fore.MAGENTA + "Disconnect DC_DC Board from test stand and submerge in liguid argon, "
-                         "\n press ENTER to continue")
+                         "press ENTER to continue")
     print("Timer begun for 600 seconds...")
-    time.sleep(3)
+    time.sleep(600)
     input(Fore.MAGENTA + "Timer end, reconnect board and press ENTER to continue")
 
     PS.write("INST CH1")
@@ -341,8 +341,7 @@ def Cold_Startup_Test(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V
     DMM.write("ROUT:MULT:CLOS (@3)")
     DMM.write('TRAC:CLE "defbuffer1"')
     DMM.write('TRAC:POIN 100')
-    DMM.write('TRIG:LOAD "SimpleLoop",100,0.02')
-    #go ahead and take 100 measurements in 2 sec
+    DMM.write('TRIG:LOAD "SimpleLoop",100,0.05')
     DMM.write('INIT')
     time.sleep(0.5)
     PS.write("OUTP ON")
@@ -372,6 +371,7 @@ def Cold_Startup_Test(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V
 
     #saves data and trace
     trace_output["cold_startup_trace"] = datalist
+    print(datalist)
     if all([dp <=COLD_V[1] and dp >=COLD_V[0] for dp in datalist]):
         test_output["cold_startup"] = "PASS"
         return True

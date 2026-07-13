@@ -3,11 +3,15 @@ from colorama import Fore,init
 import sys
 from WorkbookCreator import *
 init(autoreset=True)
-#run this file to update data in your local spreadsheet
+
+#Run this file to update data in your local spreadsheet, but replace the following parameter with system desktop path or
+#other desired download destination:
+DD = rf"C:\Users\StudentAdmin\Desktop"
+XLSX_NAME= "TESTS"
 
 if input(Fore.MAGENTA + "Download full test data (1) or download specific board trace (2)? ") =="2":
     board_id = input(Fore.MAGENTA + "Enter board id: ")
-    output_path = rf"C:\Users\StudentAdmin\Desktop\{board_id}.xlsx"
+    output_path = DD + rf"\{board_id}.xlsx"
 
     with sqlite3.connect(TRACE_PATH) as conn:
         cursor = conn.cursor()
@@ -61,7 +65,7 @@ if input(Fore.MAGENTA + "Download full test data (1) or download specific board 
     sys.exit(0)
 
 conn = sqlite3.connect(DB_PATH)
-output_file=r"C:\Users\StudentAdmin\Desktop\TESTONE.xlsx"
+output_file=DD + rf"\{XLSX_NAME}.xlsx"
 df = pd.read_sql_query("SELECT * FROM dc_dc_tests", conn)
 conn.close()
 
