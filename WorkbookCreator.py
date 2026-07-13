@@ -7,9 +7,8 @@ from openpyxl.styles import Font, PatternFill, Alignment
 DB_PATH = "dc_dc_temp6.db"
 TRACE_PATH = "dc_dc_temp_trace1.db"
 
-#sorry for how this db pushing and fetching procedere works, it was a nightmare to figure out in the first place and so
-#a lot of it is now done with the help of the dark arts
-
+#this whole routine is very touchy, it may cause issues for both db i/o and data collection if
+#you touch this file
 def init_db():
     '''this creates the database'''
     with sqlite3.connect(DB_PATH) as conn:
@@ -209,15 +208,10 @@ def export_board_trace_to_excel(board_id, output_path=None):
             return
 
         columns = [desc[0] for desc in cursor.description]
-
-    # Convert SQL row into dictionary
     data = dict(zip(columns, row))
 
     with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
-
         for test_name, trace_json in data.items():
-
-            # Only process trace columns
             if test_name.endswith("_trace") and trace_json is not None:
 
                 trace = json.loads(trace_json)
@@ -225,9 +219,7 @@ def export_board_trace_to_excel(board_id, output_path=None):
                     "Sample": range(len(trace)),
                     "Value": trace
                 })
-                # Excel sheet names max length is 31 chars
                 sheet_name = test_name[:31]
-
                 df.to_excel(
                     writer,
                     sheet_name=sheet_name,
