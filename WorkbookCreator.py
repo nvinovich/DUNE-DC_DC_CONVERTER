@@ -4,8 +4,8 @@ from datetime import datetime
 from openpyxl import load_workbook
 import json
 from openpyxl.styles import Font, PatternFill, Alignment
-DB_PATH = "dc_dc_temp6.db"
-TRACE_PATH = "dc_dc_temp_trace1.db"
+DB_PATH = "dc_dc_temp9.db"
+TRACE_PATH = "dc_dc_temp_trace3.db"
 
 #this whole routine is very touchy, it may cause issues for both db i/o and data collection if
 #you touch this file
@@ -41,9 +41,10 @@ def init_db():
 
 def insert_test(data):
     '''this adds one set of board test data'''
+
+    #for now I am turning off the update and recording for output emi and cold noise
     with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
-
         cursor.execute("""
         INSERT INTO dc_dc_tests (
             board_id,
@@ -54,16 +55,14 @@ def insert_test(data):
             initial_start_up,
             input_voltage_sweep,
             nominal_load_performance,
-            output_emi,
             secondary_calibration,
             initial_cold_voltage,
             inital_cold_current,
             input_current_output_voltage,
             output_step_load,
             input_step_voltage,
-            output_noise_voltage,
             cold_start_up
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?,?, ?, ?,?,?,?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?,?,?, ?, ?,?,?,?)
         """, (
             data["board_id"],
             datetime.now().isoformat(),
@@ -73,14 +72,12 @@ def insert_test(data):
             data["initial_start_up"],
             data["input_voltage_sweep"],
             data["nominal_load_performance"],
-            data["output_emi"],
             data["secondary_calibration"],
             data["initial_cold_voltage"],
             data["initial_cold_current"],
             data["input_current_output_voltage"],
             data["output_step_load"],
             data["input_step_voltage"],
-            data["output_noise_voltage"],
             data["cold_start_up"],
         ))
 
@@ -90,6 +87,7 @@ def update_cold_test(data):
     with sqlite3.connect(DB_PATH) as conn:
         cursor = conn.cursor()
 
+    #for now I am turning off the update and recording for output emi and cold noise
         cursor.execute("""
         UPDATE dc_dc_tests
 
@@ -100,7 +98,6 @@ def update_cold_test(data):
             input_current_output_voltage = ?,
             output_step_load = ?,
             input_step_voltage = ?,
-            output_noise_voltage = ?,
             cold_start_up = ?,
             timestamp = ?
 
@@ -114,7 +111,6 @@ def update_cold_test(data):
             data["input_current_output_voltage"],
             data["output_step_load"],
             data["input_step_voltage"],
-            data["output_noise_voltage"],
             data["cold_start_up"],
             datetime.now().isoformat(),
             data["board_id"]

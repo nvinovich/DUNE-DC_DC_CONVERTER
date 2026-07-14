@@ -1,4 +1,6 @@
 import time
+from os.path import samefile
+
 import pyvisa
 from colorama import init, Fore, Back, Style
 init(autoreset=True)
@@ -100,13 +102,14 @@ def Input_Voltage_Sweep(DMM: Resource, PS: Resource, INITIAL_START_UP_VOLTAGE: l
     test_output["input_voltage_sweep"] = "PASS"
     return True
 
-def Nominal_Load_Performance(DMM: Resource, PS: Resource, VOLTAGE_RANGE: list[float],
+def Nominal_Load_Performance(DMM: Resource, PS: Resource, RELAY, VOLTAGE_RANGE: list[float],
                         CALIBRATED_VOLTAGE_IN:float, test_output, trace_output,debug:bool) -> bool:
     '''4.2.3 DCDC CONVERTER DOC'''
     #this will make semi-cont measurements and return based on final perf.
     DMM.write("*RST")
     #activates relay for 1 megaohn resistance channel
     #that is, channel 2
+    RELAY.write(b"reset\r")
     PS.write("INST CH1")
     PS.write("VOLT " + str(CALIBRATED_VOLTAGE_IN))
     PS.write("CURR 0.050")
@@ -119,15 +122,14 @@ def Nominal_Load_Performance(DMM: Resource, PS: Resource, VOLTAGE_RANGE: list[fl
     DMM.write('TRIG:LOAD "SimpleLoop",100,0.02') #/100 measurements in 2 sec
     DMM.write('INIT')
     time.sleep(0.5)
-    PS.write("INST CH2")
-    PS.write("VOLT 5")
-    PS.write("CURR 0.200")
-    PS.write("OUTP ON")
+    RELAY.write(b"relay on\r") #this runs the relay for the 1 ohm resistor channel, if it times
+    #out that may be an issue, but see if it works
     DMM.query("*OPC?")
 
     n = int(DMM.query('TRAC:ACT? "defbuffer1"'))
     if debug:
         print("samples:", n)
+    RELAY.write(b"reset\r")
 
     #take back trace data, read all samples to a db eventually.
     if n > 0:
@@ -260,10 +262,11 @@ def Input_Voltage_Step(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN: float
     test_output["input_step_voltage"] = "FAIL"
     return False
 
-def Output_Step_Load(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V,
+def Output_Step_Load(DMM: Resource, PS: Resource, RELAY, CALIBRATED_VOLTAGE_IN, COLD_V,
                      test_output, trace_output,debug:bool) ->bool:
     '''4.3.3'''
     DMM.write("*RST")
+    RELAY.write(b"reset\r")
     DMM.write("ROUT:MULT:CLOS (@3)")
     PS.write("*RST")
     #activates channel relay for 1 mohm
@@ -283,11 +286,7 @@ def Output_Step_Load(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V,
     DMM.write('INIT')
     time.sleep(0.5)
 
-    PS.write("INST CH2")
-    PS.write("VOLT 5")  #again, this is fine to be any voltage around 5 as long as it opens the relay
-    PS.write("CURR 0.200")
-    PS.write("OUTP ON")
-    PS.query("*OPC?")
+    RELAY.write(b"relay on 000\r")
 
     #let me know when done
     DMM.query('*OPC?')
@@ -295,6 +294,7 @@ def Output_Step_Load(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V,
     n = int(DMM.query('TRAC:ACT? "defbuffer1"'))
     if debug:
         print("samples:", n)
+    RELAY.write(b"reset\r")
 
     if n > 0:
         data = DMM.query(f'TRAC:DATA? 1,{n},"defbuffer1",READ')
@@ -313,10 +313,10 @@ def Output_Step_Load(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V,
 
     trace_output["output_step_load_trace"] = datalist
     if all([dp <=COLD_V[1] and dp >=COLD_V[0] for dp in datalist]):
-        test_output["output_step_voltage"] = "PASS"
+        test_output["output_step_load"] = "PASS"
         return True
     else:
-        test_output["output_step_voltage"] = "FAIL"
+        test_output["output_step_load"] = "FAIL"
         return False
 
 def Cold_Startup_Test(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V,
@@ -330,7 +330,7 @@ def Cold_Startup_Test(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V
     input(Fore.MAGENTA + "Disconnect DC_DC Board from test stand and submerge in liguid argon, "
                          "press ENTER to continue")
     print("Timer begun for 600 seconds...")
-    time.sleep(600)
+    time.sleep(1)
     input(Fore.MAGENTA + "Timer end, reconnect board and press ENTER to continue")
 
     PS.write("INST CH1")
@@ -373,7 +373,7 @@ def Cold_Startup_Test(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V
     trace_output["cold_startup_trace"] = datalist
     print(datalist)
     if all([dp <=COLD_V[1] and dp >=COLD_V[0] for dp in datalist]):
-        test_output["cold_startup"] = "PASS"
+        test_output["cold_start_up"] = "PASS"
         return True
-    test_output["cold_startup"] = "FAIL"
+    test_output["cold_start_up"] = "FAIL"
     return False

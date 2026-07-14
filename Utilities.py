@@ -176,36 +176,3 @@ def AUTOCALIBRATE_TO_IDEAL_INCOMING_VOLTAGE(  DMM: Resource, PS: Resource, IDEAL
               + Fore.GREEN+str(round((incoming_volts),5)), "VOLTS")
     DMM.write("*RST")
     return CALIBRATED_VOLTAGE_IN, incoming_volts
-
-class SERIAL_RELAY:
-    '''obj based makes most sense here'''
-    def __init__(self, relay):
-        self.relay = relay
-        self.states = [False, False, False, False]
-
-    def set_channel(self, channel, state):
-        '''This should set a channel on or off in bool'''
-        if state:
-            self.relay.write(f"relay on {channel}\r".encode())
-        else:
-            self.relay.write(f"relay off {channel}\r".encode())
-        time.sleep(0.1)
-        self.relay.read_all()
-        self.states[channel] = state
-
-    def get_channel(self, channel):
-        '''returns state of any one relay channel'''
-        return self.states[channel]
-
-if __name__ == "__main__":
-    #a few relay controller tests
-    RELAY = SERIAL_CONNECTOR()
-    RELAY_CONTROLLER = SERIAL_RELAY(RELAY)
-
-    RELAY_CONTROLLER.set_channel(0, True)
-
-    print(RELAY_CONTROLLER.get_channel(0))  # Should be True
-
-    RELAY_CONTROLLER.set_channel(0, False)
-
-    print(RELAY_CONTROLLER.get_channel(0))  # False

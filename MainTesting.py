@@ -105,7 +105,7 @@ while test_more_boards_o7:
             print("INPUT VOLTAGE SWEEP: ", Fore.RED + "FAIL")
     #4.2.3
         time.sleep(0.5)
-        if Nominal_Load_Performance(DMM, PS, INITIAL_START_UP_VOLTAGE, CALIBRATED_VOLTAGE_IN,
+        if Nominal_Load_Performance(DMM, PS, RELAY, INITIAL_START_UP_VOLTAGE, CALIBRATED_VOLTAGE_IN,
                                     test_output,trace_output,debug):
             print("NOMINAL LOAD STABILIZATION: ", Fore.GREEN + "PASS")
         else:
@@ -119,15 +119,19 @@ while test_more_boards_o7:
 
     if input(Fore.MAGENTA + "Continue to Cold Testing? (y/n) ").lower() == "y":
         #not entirely needed, but reset just to be safe
-        #what does leaving power on here look like
+        #this should keep the power at an expected level during quenching
         PS.write("*RST")
         DMM.write("*RST")
+        PS.write("INST CH1")
+        PS.write("VOLT "+str(CALIBRATED_VOLTAGE_IN))
+        PS.write("CURR 0.05")
+        PS.write("OUTP ON")
         input(Fore.MAGENTA + "Submerge board in liquid argon for 300 seconds, press ENTER to start timer:")
         print("Timer begun for 300 seconds...")
         if debug:
             time.sleep(3)
         else:
-            time.sleep(300)
+            time.sleep(3)
         input(Fore.MAGENTA +"Timer end, press ENTER to continue")
     else:
         print(Fore.LIGHTCYAN_EX + "PARTIAL TEST RESULTS EXPORTED")
@@ -135,6 +139,7 @@ while test_more_boards_o7:
 
 #secondary calibration for cold testing
 
+    PS.write("*RST")
     CALIBRATED_VOLTAGE_IN, inboard = Utilities.AUTOCALIBRATE_TO_IDEAL_INCOMING_VOLTAGE(DMM, PS,
                                         IDEAL_INCOMING_VOLTAGE, CALIBRATED_VOLTAGE_IN,debug)
     test_output["secondary_calibration"] = (str(round(CALIBRATED_VOLTAGE_IN,5)) +
@@ -147,7 +152,8 @@ while test_more_boards_o7:
         print("INITIAL COLD INPUT/OUTPUT: ", Fore.RED + "FAIL")
     time.sleep(0.5)
 #4.3.3
-    if  Output_Step_Load(DMM,PS,CALIBRATED_VOLTAGE_IN,OUTPUT_VOLTAGE_COLD ,test_output,trace_output,debug):
+    if  Output_Step_Load(DMM,PS, RELAY, CALIBRATED_VOLTAGE_IN,OUTPUT_VOLTAGE_COLD
+            ,test_output,trace_output,debug):
         print("OUTPUT STEP VOLTAGE: "+ Fore.GREEN + "PASS")
     else:
         print("OUTPUT STEP VOLTAGE: "+ Fore.RED + "FAIL")
