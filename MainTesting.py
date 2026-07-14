@@ -3,6 +3,7 @@ init(autoreset=True)
 import Utilities
 from WorkbookCreator import *
 from Tests import *
+print("booting...")
 
 #init dbs if not already
 init_db()
@@ -83,6 +84,7 @@ while test_more_boards_o7:
 
     #this chunk takes a board id and checks to see if db already has warm data, which we will skip if there
     test_output["board_id"] = input(Fore.MAGENTA + "Board ID: ")
+    print()
     if not Utilities.WARM_TEST_EXISTS(str(test_output["board_id"])):
 
     #calibration of incoming voltage
@@ -126,12 +128,12 @@ while test_more_boards_o7:
         PS.write("VOLT "+str(CALIBRATED_VOLTAGE_IN))
         PS.write("CURR 0.05")
         PS.write("OUTP ON")
-        input(Fore.MAGENTA + "Submerge board in liquid argon for 300 seconds, press ENTER to start timer:")
+        input(Fore.MAGENTA + "Submerge board in liquid argon for 300 seconds, press ENTER to start timer")
         print("Timer begun for 300 seconds...")
         if debug:
             time.sleep(3)
         else:
-            time.sleep(3)
+            time.sleep(300)
         input(Fore.MAGENTA +"Timer end, press ENTER to continue")
     else:
         print(Fore.LIGHTCYAN_EX + "PARTIAL TEST RESULTS EXPORTED")

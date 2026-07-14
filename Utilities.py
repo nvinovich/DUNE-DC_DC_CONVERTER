@@ -8,8 +8,7 @@ from colorama import init, Fore, Back, Style
 init(autoreset=True)
 import pyvisa
 from pyvisa import Resource
-from WorkbookCreator import DB_PATH
-
+from WorkbookCreator import get_connection
 #this is a set of quality of life and connection utilities which would mainly be clutter in the other files
 
 def DUNE_ASCII():
@@ -65,22 +64,28 @@ def RESOURCE_CONNECTOR(RM)->(Resource,Resource):
 
 def WARM_TEST_EXISTS(board_id: str) ->bool:
     #helps to skip warm testing if already done
-    with sqlite3.connect(DB_PATH) as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
-                       SELECT initial_start_up,
-                              input_voltage_sweep,
-                              nominal_load_performance
-                       FROM dc_dc_tests
-                       WHERE board_id = ?
-                       ORDER BY id DESC LIMIT 1
-                       """, (board_id,))
+    #had to update for new db formatting as well
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
 
-        row = cursor.fetchone()
+            cursor.execute("""
+                SELECT 
+                    initial_start_up,
+                    input_voltage_sweep,
+                    nominal_load_performance
+                FROM dc_dc_tests
+                WHERE board_id = %s
+                ORDER BY id DESC
+                LIMIT 1
+            """, (board_id,))
+
+            row = cursor.fetchone()
+
     if row is None:
-        #throw false if not exist yet
+        # Board does not exist yet
         return False
-    #if all three tests have been completed
+
+    # All three warm tests completed
     return all(value not in (None, "NULL") for value in row)
 
 def SERIAL_CONNECTOR(baudrate=19200,timeout=1):

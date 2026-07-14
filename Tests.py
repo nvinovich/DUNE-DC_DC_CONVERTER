@@ -330,7 +330,7 @@ def Cold_Startup_Test(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V
     input(Fore.MAGENTA + "Disconnect DC_DC Board from test stand and submerge in liguid argon, "
                          "press ENTER to continue")
     print("Timer begun for 600 seconds...")
-    time.sleep(1)
+    time.sleep(600)
     input(Fore.MAGENTA + "Timer end, reconnect board and press ENTER to continue")
 
     PS.write("INST CH1")
@@ -347,8 +347,7 @@ def Cold_Startup_Test(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V
     PS.write("OUTP ON")
 
     #oopsforgot to wait for actual recording so we only got 60 ms of trace data
-    DMM.query("*OPC?") #should fix it
-    time.sleep(0.2)
+    time.sleep(5)
 
     n = int(DMM.query('TRAC:ACT? "defbuffer1"'))
     if debug:
@@ -375,7 +374,6 @@ def Cold_Startup_Test(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V
 
     #saves data and trace
     trace_output["cold_startup_trace"] = datalist
-    print(datalist)
     if all([dp <=COLD_V[1] and dp >=COLD_V[0] for dp in datalist]):
         test_output["cold_start_up"] = "PASS"
         return True
