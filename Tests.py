@@ -346,6 +346,10 @@ def Cold_Startup_Test(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V
     time.sleep(0.5)
     PS.write("OUTP ON")
 
+    #oopsforgot to wait for actual recording so we only got 60 ms of trace data
+    DMM.query("*OPC?") #should fix it
+    time.sleep(0.2)
+
     n = int(DMM.query('TRAC:ACT? "defbuffer1"'))
     if debug:
         print("samples ", n)
