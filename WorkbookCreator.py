@@ -7,6 +7,7 @@ from openpyxl.styles import Font, PatternFill, Alignment
 #this will be a fairly major change away from sql lite to psygopg so i hope it works?
 DB_INFO = {
     "host": "localhost",
+    #server ip is: 172.17.106.247, replace with host if not using the server computer
     "dbname": "dcdc_tests",
     "user": "studadmin",
     "password": "password",

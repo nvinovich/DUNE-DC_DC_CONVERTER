@@ -22,6 +22,7 @@ INITIAL_START_UP_CURRENT = [-0.035,-0.033]
 #4.3.5
 OUTPUT_VOLTAGE_COLD = [48.0,50.0]#ask mike hwy this is a tigheter range
 INPUT_CURRENT_COLD = [-0.025,-0.027]
+OVERRIDE_RELAY = False
 #DEBUG CONFIG SETTINGS
 debug = False #general debug to see more numbers during testing
 #======================================================================================================================#
@@ -107,7 +108,7 @@ while test_more_boards_o7:
             print("INPUT VOLTAGE SWEEP: ", Fore.RED + "FAIL")
     #4.2.3
         time.sleep(0.5)
-        if Nominal_Load_Performance(DMM, PS, RELAY, INITIAL_START_UP_VOLTAGE, CALIBRATED_VOLTAGE_IN,
+        if Nominal_Load_Performance(DMM, PS, RELAY,OVERRIDE_RELAY, INITIAL_START_UP_VOLTAGE, CALIBRATED_VOLTAGE_IN,
                                     test_output,trace_output,debug):
             print("NOMINAL LOAD STABILIZATION: ", Fore.GREEN + "PASS")
         else:
@@ -133,7 +134,7 @@ while test_more_boards_o7:
         if debug:
             time.sleep(3)
         else:
-            time.sleep(300)
+            time.sleep(3)
         input(Fore.MAGENTA +"Timer end, press ENTER to continue")
     else:
         print(Fore.LIGHTCYAN_EX + "PARTIAL TEST RESULTS EXPORTED")
@@ -150,11 +151,12 @@ while test_more_boards_o7:
     if Input_and_Ouput_Cold(DMM,PS,CALIBRATED_VOLTAGE_IN,
                             OUTPUT_VOLTAGE_COLD,INPUT_CURRENT_COLD,test_output,trace_output,debug):
         print("INITIAL COLD INPUT/OUTPUT: ", Fore.GREEN + "PASS")
+
     else:
         print("INITIAL COLD INPUT/OUTPUT: ", Fore.RED + "FAIL")
     time.sleep(0.5)
 #4.3.3
-    if  Output_Step_Load(DMM,PS, RELAY, CALIBRATED_VOLTAGE_IN,OUTPUT_VOLTAGE_COLD
+    if  Output_Step_Load(DMM,PS, RELAY, OVERRIDE_RELAY, CALIBRATED_VOLTAGE_IN,OUTPUT_VOLTAGE_COLD
             ,test_output,trace_output,debug):
         print("OUTPUT STEP VOLTAGE: "+ Fore.GREEN + "PASS")
     else:

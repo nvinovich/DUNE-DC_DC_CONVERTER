@@ -129,6 +129,10 @@ def AUTOCALIBRATE_TO_IDEAL_INCOMING_VOLTAGE(  DMM: Resource, PS: Resource, IDEAL
     '''Makes minimal adjustments to get incoming voltage to 5 volts with up to 0.01 VOLT error'''
     #reset calibrated voltage
     CALIBRATED_VOLTAGE_IN = 5.0
+    PS.write("*RST")
+    DMM.write("*RST")
+    PS.write("*CLS")
+    time.sleep(0.3)
     PS.write("INST CH1")
     PS.write("VOLT "+str(CALIBRATED_VOLTAGE_IN))
     PS.write("CURR 0.050")
@@ -171,6 +175,7 @@ def AUTOCALIBRATE_TO_IDEAL_INCOMING_VOLTAGE(  DMM: Resource, PS: Resource, IDEAL
         time.sleep(0.05)
 
         incoming_volts = float(DMM.query("READ?"))
+        time.sleep(0.5)
         Calibration_Timeout -=1
 
     if debug:
@@ -180,4 +185,5 @@ def AUTOCALIBRATE_TO_IDEAL_INCOMING_VOLTAGE(  DMM: Resource, PS: Resource, IDEAL
         print("INPUT VOLTAGE CALIBRATED TO " + Fore.GREEN + str(round(CALIBRATED_VOLTAGE_IN,5)), "VOLTS, OUTPUT OF "
               + Fore.GREEN+str(round((incoming_volts),5)), "VOLTS")
     DMM.write("*RST")
+
     return CALIBRATED_VOLTAGE_IN, incoming_volts

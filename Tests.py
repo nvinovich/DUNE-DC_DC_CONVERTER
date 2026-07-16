@@ -102,14 +102,19 @@ def Input_Voltage_Sweep(DMM: Resource, PS: Resource, INITIAL_START_UP_VOLTAGE: l
     test_output["input_voltage_sweep"] = "PASS"
     return True
 
-def Nominal_Load_Performance(DMM: Resource, PS: Resource, RELAY, VOLTAGE_RANGE: list[float],
-                        CALIBRATED_VOLTAGE_IN:float, test_output, trace_output,debug:bool) -> bool:
+def Nominal_Load_Performance(DMM: Resource, PS: Resource, RELAY, OVERRIDE_RELAY: bool,
+                    VOLTAGE_RANGE: list[float], CALIBRATED_VOLTAGE_IN:float, test_output,
+                             trace_output,debug:bool) -> bool:
     '''4.2.3 DCDC CONVERTER DOC'''
     #this will make semi-cont measurements and return based on final perf.
     DMM.write("*RST")
     #activates relay for 1 megaohn resistance channel
     #that is, channel 2
     RELAY.write(b"reset\r")
+    if OVERRIDE_RELAY:
+        PS.write("INST CH2")
+        PS.write("VOLT 5")
+        PS.write("CURR 0.03")
     PS.write("INST CH1")
     PS.write("VOLT " + str(CALIBRATED_VOLTAGE_IN))
     PS.write("CURR 0.050")
@@ -122,7 +127,11 @@ def Nominal_Load_Performance(DMM: Resource, PS: Resource, RELAY, VOLTAGE_RANGE: 
     DMM.write('TRIG:LOAD "SimpleLoop",100,0.02') #/100 measurements in 2 sec
     DMM.write('INIT')
     time.sleep(0.5)
-    RELAY.write(b"relay on\r") #this runs the relay for the 1 ohm resistor channel, if it times
+    if OVERRIDE_RELAY:
+        PS.write("INST CH2")
+        PS.write("OUTP ON")
+    else:
+        RELAY.write(b"relay on\r") #this runs the relay for the 1 ohm resistor channel, if it times
     #out that may be an issue, but see if it works
     DMM.query("*OPC?")
 
@@ -132,6 +141,7 @@ def Nominal_Load_Performance(DMM: Resource, PS: Resource, RELAY, VOLTAGE_RANGE: 
     RELAY.write(b"reset\r")
 
     #take back trace data, read all samples to a db eventually.
+    PS.write("*RST")
     if n > 0:
         data = DMM.query(f'TRAC:DATA? 1,{n},"defbuffer1",READ')
         datalist = list(data.split(','))
@@ -262,18 +272,24 @@ def Input_Voltage_Step(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN: float
     test_output["input_step_voltage"] = "FAIL"
     return False
 
-def Output_Step_Load(DMM: Resource, PS: Resource, RELAY, CALIBRATED_VOLTAGE_IN, COLD_V,
-                     test_output, trace_output,debug:bool) ->bool:
+def Output_Step_Load(DMM: Resource, PS: Resource, RELAY, OVERIDE_RELAY: bool,CALIBRATED_VOLTAGE_IN,
+                     COLD_V,test_output, trace_output,debug:bool) ->bool:
     '''4.3.3'''
     DMM.write("*RST")
     RELAY.write(b"reset\r")
     DMM.write("ROUT:MULT:CLOS (@3)")
     PS.write("*RST")
+
     #activates channel relay for 1 mohm
     PS.write("INST CH1")
     PS.write("VOLT " + str(CALIBRATED_VOLTAGE_IN))
     PS.write("CURR 0.050")
     PS.write("OUTP ON")
+    if OVERIDE_RELAY:
+        #alternative channel to relay toggle
+        PS.write("INST CH2")
+        PS.write("VOLT 5")
+        PS.write("CURR 0.03")
 
     #this takes 100 measurements in 2 sec, just as above
     #if all fall within stable range within the time they are good.
@@ -285,8 +301,12 @@ def Output_Step_Load(DMM: Resource, PS: Resource, RELAY, CALIBRATED_VOLTAGE_IN, 
 
     DMM.write('INIT')
     time.sleep(0.5)
-
-    RELAY.write(b"relay on 000\r")
+    # just an option ot use the power supply dual channel instead of relay
+    if OVERIDE_RELAY:
+        PS.write("INST CH2")
+        PS.write("OUTP ON")
+    else:
+        RELAY.write(b"relay on 000\r")
 
     #let me know when done
     DMM.query('*OPC?')
@@ -295,6 +315,8 @@ def Output_Step_Load(DMM: Resource, PS: Resource, RELAY, CALIBRATED_VOLTAGE_IN, 
     if debug:
         print("samples:", n)
     RELAY.write(b"reset\r")
+
+    PS.write("*RST")
 
     if n > 0:
         data = DMM.query(f'TRAC:DATA? 1,{n},"defbuffer1",READ')
@@ -330,7 +352,7 @@ def Cold_Startup_Test(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V
     input(Fore.MAGENTA + "Disconnect DC_DC Board from test stand and submerge in liguid argon, "
                          "press ENTER to continue")
     print("Timer begun for 600 seconds...")
-    time.sleep(600)
+    time.sleep(6)
     input(Fore.MAGENTA + "Timer end, reconnect board and press ENTER to continue")
 
     PS.write("INST CH1")
