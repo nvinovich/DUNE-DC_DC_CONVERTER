@@ -1,4 +1,4 @@
-This is the testing framework for use in Iowa's DUNE DC to DC Converter Box assembly, at least a rough version of it.
+This is the testing framework for use in Iowa's DUNE DC to DC Converter Box assembly, in a nearly complete state.
 All files are required for proper execution, but only MainTesting must be ran to begin testing.
 
 Testing parameters can be configured at the top of MainTesting.
@@ -8,3 +8,5 @@ the scope trace data of any board. User must change destination paths or data wi
 are Input Voltage Trace 3000ms, Nominal Load Trace 2000ms, Input Step Voltage Trace 2000ms, Output Step Trace 2000ms,
 and Cold Startup Trace 5000ms. Power cycle tests are done over 5 cycles with 20 measurements of current and voltage
 each.
+
+For now, all the tests that need be done are contained in Maintesting.

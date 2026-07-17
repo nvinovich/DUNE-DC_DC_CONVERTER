@@ -4,6 +4,7 @@ from datetime import datetime
 from openpyxl import load_workbook
 import json
 from openpyxl.styles import Font, PatternFill, Alignment
+
 #this will be a fairly major change away from sql lite to psygopg so i hope it works?
 DB_INFO = {
     "host": "localhost",
@@ -15,6 +16,10 @@ DB_INFO = {
 }
 def get_connection():
     return psycopg.connect(**DB_INFO)
+
+#can kill table with this command set, but please dont
+#DROP TABLE dc_dc_tests;
+#DROP TABLE board_traces;
 
 #this whole routine is very touchy, it may cause issues for both db i/o and data collection if
 #you touch this file
@@ -38,10 +43,9 @@ def init_db():
                 input_voltage_sweep TEXT,
                 nominal_load_performance TEXT,
                 
+                voltage_dev_warm REAL,
                 mc_ave_vol REAL,
                 mc_ave_cur REAL,
-                mc_ave_vol_c REAL,
-                mc_ave_cur_C REAL,
             
                 secondary_calibration TEXT,
                 initial_cold_voltage REAL,
@@ -49,7 +53,11 @@ def init_db():
                 input_current_output_voltage TEXT,
                 output_step_load TEXT,
                 input_step_voltage TEXT,
-                cold_start_up TEXT
+                cold_start_up TEXT,
+                
+                voltage_dev_cold REAL,
+                mc_ave_vol_c REAL,
+                mc_ave_cur_c REAL
             )
             """)
             conn.commit()
@@ -64,6 +72,7 @@ def insert_test(data):
             INSERT INTO dc_dc_tests (
                 board_id,
                 timestamp,
+                
                 calibrated_voltage,
                 initial_voltage,
                 initial_current,
@@ -71,10 +80,9 @@ def insert_test(data):
                 input_voltage_sweep,
                 nominal_load_performance,
                 
-                mc_ave_vol,    
+                voltage_dev_warm,
+                mc_ave_vol,
                 mc_ave_cur,
-                mc_ave_vol_c,    
-                mc_ave_cur_c,
                 
                 secondary_calibration,
                 initial_cold_voltage,
@@ -82,12 +90,18 @@ def insert_test(data):
                 input_current_output_voltage,
                 output_step_load,
                 input_step_voltage,
-                cold_start_up
+                cold_start_up,
+                
+                voltage_dev_cold,
+                mc_ave_vol_c,
+                mc_ave_cur_c
+                
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s,
-                      %s,%s, %s, %s,%s,%s,%s,%s, %s,%s,%s)
+                      %s,%s, %s, %s,%s,%s,%s,%s, %s,%s,%s, %s, %s)
             """, (
                 data["board_id"],
                 datetime.now(),
+
                 data["calibrated_voltage"],
                 data["initial_voltage"],
                 data["initial_current"],
@@ -96,10 +110,9 @@ def insert_test(data):
                 data["nominal_load_performance"],
 
                 #adding even more fun statistics
+                data["voltage_dev_warm"],
                 data["mc_ave_vol"],
                 data["mc_ave_cur"],
-                data["mc_ave_vol_c"],
-                data["mc_ave_cur_c"],
                 
                 data["secondary_calibration"],
                 data["initial_cold_voltage"],
@@ -108,6 +121,10 @@ def insert_test(data):
                 data["output_step_load"],
                 data["input_step_voltage"],
                 data["cold_start_up"],
+
+                data["voltage_dev_cold"],
+                data["mc_ave_vol_c"],
+                data["mc_ave_cur_c"],
             ))
             conn.commit()
 
@@ -122,9 +139,9 @@ def update_cold_test(data):
             UPDATE dc_dc_tests
         
             SET
-                
+                voltage_dev_cold =%s,
                 mc_ave_vol_c =%s,
-mc_a            ve_cur_c =%s,
+                mc_ave_cur_c =%s,
                 secondary_calibration = %s,
                 initial_cold_voltage = %s,
                 initial_cold_current = %s,
@@ -138,6 +155,10 @@ mc_a            ve_cur_c =%s,
         
             """,
             (
+                data["voltage_dev_cold"],
+                data["mc_ave_vol_c"],
+                data["mc_ave_cur_c"],
+
                 data["secondary_calibration"],
                 data["initial_cold_voltage"],
                 data["initial_cold_current"],
@@ -171,6 +192,7 @@ def init_trace_db():
                 
     multiple_power_cycle_voltage TEXT,
     multiple_power_cycle_current TEXT,
+    
     multiple_power_cycle_voltage_c TEXT,
     multiple_power_cycle_current_c TEXT,
 
@@ -251,9 +273,47 @@ def update_cold_traces(board_id,data
                                json.dumps(data["input_step_voltage_voltage_trace"]),
                                json.dumps(data["input_step_voltage_current_trace"]),
 
-                               json.dumps(data["multiple_power_cycle_voltage"]),
-                               json.dumps(data["multiple_power_cycle_current"]),
+                               json.dumps(data["multiple_power_cycle_voltage_c"]),
+                               json.dumps(data["multiple_power_cycle_current_c"]),
 
                                board_id,
                            ))
             conn.commit()
+
+
+def rename_board_id(old_id, new_id):
+    '''updates an id to a new arg if it does not exist already'''
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT board_id
+                FROM dc_dc_tests
+                WHERE board_id = %s
+            """, (new_id,))
+
+            if cursor.fetchone():
+                raise ValueError(f"Board ID {new_id} already exists.")
+
+            cursor.execute("""
+                UPDATE dc_dc_tests
+                SET board_id = %s
+                WHERE board_id = %s
+            """, (new_id, old_id))
+
+            tests_updated = cursor.rowcount
+
+            cursor.execute("""
+                UPDATE board_traces
+                SET board_id = %s
+                WHERE board_id = %s
+            """, (new_id, old_id))
+
+            traces_updated = cursor.rowcount
+
+            conn.commit()
+
+    print(
+        f"Renamed {old_id} -> {new_id}\n"
+        f"Test rows updated: {tests_updated}\n"
+        f"Trace rows updated: {traces_updated}"
+    )

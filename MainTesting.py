@@ -1,12 +1,9 @@
 from colorama import init, Fore, Back, Style
-
 from Utilities import AUTOCALIBRATE_TO_IDEAL_INCOMING_VOLTAGE
-
 init(autoreset=True)
 import Utilities
 from WorkbookCreator import *
 from Tests import *
-print("booting...")
 
 #init dbs if not already
 init_db()
@@ -19,21 +16,18 @@ Utilities.DUNE_ASCII()
 #voltage autocalibration
 IDEAL_INCOMING_VOLTAGE = 5.0
 CALIBRATED_VOLTAGE_IN = 5.0
-#4.2.1
 INITIAL_START_UP_VOLTAGE = [58.0,61.0]
-INITIAL_START_UP_CURRENT = [-0.035,-0.033]
-#4.2.2
-#4.3.5
-OUTPUT_VOLTAGE_COLD = [48.0,50.0]
-INPUT_CURRENT_COLD = [-0.025,-0.027]
+INITIAL_START_UP_CURRENT = [0.035,0.033]
+OUTPUT_VOLTAGE_COLD = [48.0,51.0]
+INPUT_CURRENT_COLD = [0.025,0.027]
 #DEBUG CONFIG SETTINGS
-SHORT_TEST_CYCLE = True     #abridges testing proc for early stage testing
-OVERRIDE_RELAY = False      #uses multiple ps channels instead of relay to cycle loads
-power_cycle_test = True     #turn this off during typical testing
+power_cycle_test = False     #turn this off during typical testing
 debug = True #general debug to see more numbers during testing
 #======================================================================================================================#
 
 #Check for good multimeter and power supply connections
+print(Fore.BLUE + "COMPREHENSIVE DCDC CONVERTER TESTING CYCLE")
+
 print("Checking for resources...")
 RELAY = Utilities.SERIAL_CONNECTOR()
 RM = pyvisa.ResourceManager()
@@ -47,6 +41,9 @@ DMM.write("*RST")
 DMM.write("*CLS")
 DMM.write("SENS:FUNC 'VOLT:DC'")
 PS.write("*RST")
+DMM.write("ROUT:MULT:OPEN (@3)")
+DMM.write("ROUT:MULT:OPEN (@2)")
+DMM.write("ROUT:MULT:OPEN (@1)")
 
 #testing loop:
 first = True
@@ -63,7 +60,12 @@ while test_more_boards_o7:
         "nominal_load_performance": "NULL",
 
         "mc_ave_vol": -1, #powercyles
+        "voltage_dev_warm":-1,
         "mc_ave_cur": -1,
+
+        "mc_ave_vol_c": -1, #powercylescold
+        "voltage_dev_cold":-1,
+        "mc_ave_cur_c": -1,
 
         "secondary_calibration":-1, #cold
         "initial_cold_voltage":-1,
@@ -92,6 +94,9 @@ while test_more_boards_o7:
 
         "cold_startup_voltage_trace": [],
         "cold_startup_current_trace": [],
+
+        "multiple_power_cycle_voltage_c": [],
+        "multiple_power_cycle_current_c": [],
     }
 
 #reset power supply, ask user to replace board
@@ -109,68 +114,84 @@ while test_more_boards_o7:
 
     #this chunk takes a board id and checks to see if db already has warm data, which we will skip if there
     test_output["board_id"] = input(Fore.MAGENTA + "Board ID: ")
-    print()
 
-    if SHORT_TEST_CYCLE:
+    # cold or warm
+    CorW = input(Fore.MAGENTA + "Warm or Cold Testing? (W/c)").lower()
+
+    if CorW == 'w':
+        input(Fore.MAGENTA + "Press ENTER to continue")
+        print()
+
+    #calibration of incoming voltage
         CALIBRATED_VOLTAGE_IN, inboard = Utilities.AUTOCALIBRATE_TO_IDEAL_INCOMING_VOLTAGE(DMM, PS,
-                                                                                       IDEAL_INCOMING_VOLTAGE,
-                                                                                       CALIBRATED_VOLTAGE_IN, debug)
-        POWER_CYCLE_TEST(PS,DMM,CALIBRATED_VOLTAGE_IN,test_output,trace_output)
-
-    else:
-        if not Utilities.WARM_TEST_EXISTS(str(test_output["board_id"])):
-
-        #calibration of incoming voltage
-            CALIBRATED_VOLTAGE_IN, inboard = Utilities.AUTOCALIBRATE_TO_IDEAL_INCOMING_VOLTAGE(DMM, PS,
-                                                IDEAL_INCOMING_VOLTAGE, CALIBRATED_VOLTAGE_IN,debug)
-            test_output["calibrated_voltage"] = (str(round(CALIBRATED_VOLTAGE_IN,5)) +
-                                                 " IN "+"/ "+str(round(inboard,5)) + " OUT")
-        #4.2.1
-            if Initial_Start_Up_Test(DMM, PS, INITIAL_START_UP_VOLTAGE,INITIAL_START_UP_CURRENT,
-                                     CALIBRATED_VOLTAGE_IN, test_output,trace_output,debug):
-                print("INITIAL START UP: ", Fore.GREEN + "PASS")
-            else:
-                print("INITIAL START UP: ", Fore.RED + "FAIL")
-        #4.2.2
-            time.sleep(0.5)
-            if Input_Voltage_Sweep(DMM, PS, INITIAL_START_UP_VOLTAGE,
-                                   CALIBRATED_VOLTAGE_IN, test_output,trace_output,debug):
-                print("INPUT VOLTAGE SWEEP: ", Fore.GREEN + "PASS")
-            else:
-                print("INPUT VOLTAGE SWEEP: ", Fore.RED + "FAIL")
-        #4.2.3
-            time.sleep(0.5)
-            if Nominal_Load_Performance(DMM, PS, RELAY,OVERRIDE_RELAY, INITIAL_START_UP_VOLTAGE, CALIBRATED_VOLTAGE_IN,
-                                        test_output,trace_output,debug):
-                print("NOMINAL LOAD STABILIZATION: ", Fore.GREEN + "PASS")
-            else:
-                print("NOMINAL LOAD STABILIZATION: ", Fore.RED + "FAIL")
-
-        #save trace data for warm testing
-        insert_warm_traces(test_output["board_id"],
-                           trace_output["input_voltage_sweep_trace"], trace_output["nominal_load_trace"])
-        insert_test(test_output)
-        #that should be it for the warm loop, then ask user if continue to cold testing
-
-        if input(Fore.MAGENTA + "Continue to Cold Testing? (y/n) ").lower() == "y":
-            #not entirely needed, but reset just to be safe
-            #this should keep the power at an expected level during quenching
-            PS.write("*RST")
-            DMM.write("*RST")
-            PS.write("INST CH1")
-            PS.write("VOLT "+str(CALIBRATED_VOLTAGE_IN))
-            PS.write("CURR 0.05")
-            PS.write("OUTP ON")
-            input(Fore.MAGENTA + "Submerge board in liquid argon for 300 seconds, press ENTER to start timer")
-            print("Timer begun for 300 seconds...")
-            if debug:
-                time.sleep(3)
-            else:
-                time.sleep(3)
-            input(Fore.MAGENTA +"Timer end, press ENTER to continue")
+                                            IDEAL_INCOMING_VOLTAGE, CALIBRATED_VOLTAGE_IN,debug)
+        test_output["calibrated_voltage"] = (str(round(CALIBRATED_VOLTAGE_IN,5)) +
+                                             " IN "+"/ "+str(round(inboard,5)) + " OUT")
+    #4.2.1
+        if Initial_Start_Up_Test(DMM, PS, INITIAL_START_UP_VOLTAGE,INITIAL_START_UP_CURRENT,
+                                 CALIBRATED_VOLTAGE_IN, test_output,trace_output,debug):
+            print("INITIAL START UP: ", Fore.GREEN + "PASS")
         else:
-            print(Fore.LIGHTCYAN_EX + "PARTIAL TEST RESULTS EXPORTED")
-            continue
+            print("INITIAL START UP: ", Fore.RED + "FAIL")
+    #4.2.2
+        time.sleep(0.5)
+        if Input_Voltage_Sweep(DMM, PS, INITIAL_START_UP_VOLTAGE,
+                               CALIBRATED_VOLTAGE_IN, test_output,trace_output,debug):
+            print("INPUT VOLTAGE SWEEP: ", Fore.GREEN + "PASS")
+        else:
+            print("INPUT VOLTAGE SWEEP: ", Fore.RED + "FAIL")
+    #4.2.3
+        time.sleep(0.5)
+        if Nominal_Load_Performance(DMM, PS, RELAY, INITIAL_START_UP_VOLTAGE, CALIBRATED_VOLTAGE_IN,
+                                    test_output,trace_output,debug):
+            print("NOMINAL LOAD STABILIZATION: ", Fore.GREEN + "PASS")
+        else:
+            print("NOMINAL LOAD STABILIZATION: ", Fore.RED + "FAIL")
+
+        if power_cycle_test:
+
+            #option to do power cycle testing, does take an extra ~30 sec per board
+            POWER_CYCLE_TEST(PS, DMM, CorW, CALIBRATED_VOLTAGE_IN, test_output, trace_output)
+            test_output["calibrated_voltage_warm"] = (str(round(CALIBRATED_VOLTAGE_IN, 5)) +
+                                                      " IN " + "/ " + str(round(inboard, 5)) + " OUT")
+            if all([test_output["mc_ave_vol"] <= INITIAL_START_UP_VOLTAGE[1], test_output["mc_ave_vol"] >=
+                                                                              INITIAL_START_UP_VOLTAGE[0],
+                    test_output["mc_ave_cur"] <= INITIAL_START_UP_CURRENT[1],
+                    test_output["mc_ave_cur"] >= INITIAL_START_UP_CURRENT[0]]):
+                # pass condition ^
+                test_output["within_range1"] = "PASS"
+                print("WARM OPERATIONAL RANGE: ", Fore.GREEN + "PASS")
+            else:
+                test_output["within_range1"] = "FAIL"
+                print("WARM OPERATIONAL RANGE: ", Fore.RED + "FAIL")
+
+    #save data for warm testing
+        insert_warm_traces(test_output["board_id"],
+                       trace_output)
+        insert_test(test_output)
+        print(Fore.LIGHTCYAN_EX + "WARM TEST RESULTS EXPORTED")
+
+    elif CorW == 'c':        #cold
+        input(Fore.MAGENTA+"Press ENTER to continue")
+        if not Utilities.WARM_TEST_EXISTS(str(test_output["board_id"])):
+            #doesnt let you write ahead without the warm tests for benchmark
+            print(Fore.RED + f"No warm tests exist for{test_output['board_id']}")
+
+        #this should keep the power at an expected level during quenching
+        PS.write("*RST")
+        DMM.write("*RST")
+        PS.write("INST CH1")
+        PS.write("VOLT "+str(CALIBRATED_VOLTAGE_IN))
+        PS.write("CURR 0.05")
+        PS.write("OUTP ON")
+        input(Fore.MAGENTA + "Submerge board in liquid argon for 300 seconds, press ENTER to start timer")
+        print("Timer begun for 300 seconds...")
+        if debug:
+            time.sleep(3)
+        else:
+            time.sleep(300)
+        input(Fore.MAGENTA +"Timer end, press ENTER to continue")
+        print()
 
     #secondary calibration for cold testing
 
@@ -188,7 +209,7 @@ while test_more_boards_o7:
             print("INITIAL COLD INPUT/OUTPUT: ", Fore.RED + "FAIL")
         time.sleep(0.5)
     #4.3.3
-        if  Output_Step_Load(DMM,PS, RELAY, OVERRIDE_RELAY, CALIBRATED_VOLTAGE_IN,OUTPUT_VOLTAGE_COLD
+        if  Output_Step_Load(DMM,PS, RELAY, CALIBRATED_VOLTAGE_IN,OUTPUT_VOLTAGE_COLD
                 ,test_output,trace_output,debug):
             print("OUTPUT STEP VOLTAGE: "+ Fore.GREEN + "PASS")
         else:
@@ -206,13 +227,38 @@ while test_more_boards_o7:
         else:
             print("INPUT VOLTAGE STEP: ", Fore.RED + "FAIL")
 
+        if power_cycle_test:
+            POWER_CYCLE_TEST(PS, DMM, CorW, CALIBRATED_VOLTAGE_IN, test_output, trace_output)
+            test_output["calibrated_voltage_cold"] = (str(round(CALIBRATED_VOLTAGE_IN, 5)) +
+                                                      " IN " + "/ " + str(round(inboard, 5)) + " OUT")
+            if all([test_output["mc_ave_vol_c"] <= OUTPUT_VOLTAGE_COLD[1], test_output["mc_ave_vol_c"] >=
+                                                                           OUTPUT_VOLTAGE_COLD[0],
+                    test_output["mc_ave_cur_c"] <= INPUT_CURRENT_COLD[1],
+                    test_output["mc_ave_cur_c"] >= INPUT_CURRENT_COLD[0]]):
+                # pass condition ^
+                test_output["within_range2"] = "PASS"
+                print("COLD OPERATIONAL RANGE: ", Fore.GREEN + "PASS")
+            else:
+                test_output["within_range2"] = "FAIL"
+                print("COLD OPERATIONAL RANGE: ", Fore.RED + "FAIL")
+
     #log final results for this board
         update_cold_test(test_output)
-        update_cold_traces(trace_output)
-        print(Fore.LIGHTCYAN_EX + "TEST RESULTS EXPORTED")
+        update_cold_traces(test_output["board_id"],trace_output)
+        print(Fore.LIGHTCYAN_EX + "COLD TEST RESULTS EXPORTED")
         DMM.write("*CLS")
 
-#safely close resources i hope
+    else:
+        print(Fore.RED + "Invalid Input")
+        continue
+
+    if debug:
+        print(test_output)
+        print(trace_output)
+
+    print()
+
+#safely close resources
 PS.write("*RST")
 DMM.write("*RST")
 RM.close()
