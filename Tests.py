@@ -407,7 +407,8 @@ def Cold_Startup_Test(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V
     test_output["cold_start_up"] = "FAIL"
     return False
 
-def POWER_CYCLE_TEST(PS,DMM,CALIBRATED_VOLTAGE_IN, test_output,trace_output):
+def POWER_CYCLE_TEST(PS,DMM,which,
+                     CALIBRATED_VOLTAGE_IN, test_output,trace_output):
     '''Turns on board, waits for stabilized time and then records, repeats 10 times.'''
 
     pc_vols = []
@@ -470,33 +471,14 @@ def POWER_CYCLE_TEST(PS,DMM,CALIBRATED_VOLTAGE_IN, test_output,trace_output):
     std_voltage = np.std(pc_vols)
     ave_current = np.mean(pc_cur)
     std_current = np.std(pc_cur)
-
-    test_output["mc_ave_vol"]= avg_voltage
-    test_output["mc_ave_cur"] = ave_current
-    trace_output["multiple_power_cycle_voltage"] = pc_vols
-    trace_output["multiple_power_cycle_current"] = pc_cur
-
-    mp.hist(
-        pc_vols,
-        bins= 100,
-        label="Voltage Samples"
-    )
-
-    mp.legend(
-        title=f"Ave = {avg_voltage:.5f} V\nStDev = {std_voltage:.5f} V"
-    )
-
-    board_id = input("Input BOARD_ID for Graph Name: ")
-    mp.title(f"Voltage for {board_id}")
-    mp.xlabel("Voltage (V)")
-    mp.ylabel("Samples at Voltage")
-
-    mp.grid(True)
-
-    # Save as PNG with high resolution and tight layout
-
-    desktop_path = r"C:\Users\StudentAdmin\Desktop"
-    filename = board_id + "_volt_hist.png"
-    save_path = os.path.join(desktop_path, filename)
-
-    mp.savefig(save_path, dpi=300, bbox_inches='tight')
+    #this selects which data sheet to update
+    if which == "warm":
+        test_output["mc_ave_vol"]= avg_voltage
+        test_output["mc_ave_cur"] = ave_current
+        trace_output["multiple_power_cycle_voltage"] = pc_vols
+        trace_output["multiple_power_cycle_current"] = pc_cur
+    elif which == "cold":
+        test_output["mc_ave_vol_c"]= avg_voltage
+        test_output["mc_ave_cur_c"] = ave_current
+        trace_output["multiple_power_cycle_voltage_c"] = pc_vols
+        trace_output["multiple_power_cycle_current_c"] = pc_cur

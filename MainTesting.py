@@ -47,6 +47,9 @@ DMM.write("*RST")
 DMM.write("*CLS")
 DMM.write("SENS:FUNC 'VOLT:DC'")
 PS.write("*RST")
+DMM.write("ROUT:MULT:OPEN (@3)")
+DMM.write("ROUT:MULT:OPEN (@2)")
+DMM.write("ROUT:MULT:OPEN (@1)")
 
 #testing loop:
 first = True
@@ -64,6 +67,8 @@ while test_more_boards_o7:
 
         "mc_ave_vol": -1, #powercyles
         "mc_ave_cur": -1,
+        "mc_ave_vol_c": -1, #powercyles
+        "mc_ave_cur_c": -1,
 
         "secondary_calibration":-1, #cold
         "initial_cold_voltage":-1,
@@ -112,10 +117,15 @@ while test_more_boards_o7:
     print()
 
     if SHORT_TEST_CYCLE:
+        #this is the abridged test cycle for the current phase of early testing
         CALIBRATED_VOLTAGE_IN, inboard = Utilities.AUTOCALIBRATE_TO_IDEAL_INCOMING_VOLTAGE(DMM, PS,
                                                                                        IDEAL_INCOMING_VOLTAGE,
                                                                                        CALIBRATED_VOLTAGE_IN, debug)
         POWER_CYCLE_TEST(PS,DMM,CALIBRATED_VOLTAGE_IN,test_output,trace_output)
+        insert_warm_traces(test_output["board_id"],
+                           trace_output)
+        insert_test(test_output)
+        print(Fore.LIGHTCYAN_EX + "TEST RESULTS EXPORTED")
 
     else:
         if not Utilities.WARM_TEST_EXISTS(str(test_output["board_id"])):
@@ -125,6 +135,7 @@ while test_more_boards_o7:
                                                 IDEAL_INCOMING_VOLTAGE, CALIBRATED_VOLTAGE_IN,debug)
             test_output["calibrated_voltage"] = (str(round(CALIBRATED_VOLTAGE_IN,5)) +
                                                  " IN "+"/ "+str(round(inboard,5)) + " OUT")
+            POWER_CYCLE_TEST(PS, DMM, "warm", CALIBRATED_VOLTAGE_IN, test_output, trace_output)
         #4.2.1
             if Initial_Start_Up_Test(DMM, PS, INITIAL_START_UP_VOLTAGE,INITIAL_START_UP_CURRENT,
                                      CALIBRATED_VOLTAGE_IN, test_output,trace_output,debug):
@@ -148,7 +159,7 @@ while test_more_boards_o7:
 
         #save trace data for warm testing
         insert_warm_traces(test_output["board_id"],
-                           trace_output["input_voltage_sweep_trace"], trace_output["nominal_load_trace"])
+                           trace_output)
         insert_test(test_output)
         #that should be it for the warm loop, then ask user if continue to cold testing
 
@@ -208,7 +219,7 @@ while test_more_boards_o7:
 
     #log final results for this board
         update_cold_test(test_output)
-        update_cold_traces(trace_output)
+        update_cold_traces(test_output["board_id"],trace_output)
         print(Fore.LIGHTCYAN_EX + "TEST RESULTS EXPORTED")
         DMM.write("*CLS")
 

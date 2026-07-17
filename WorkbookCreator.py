@@ -124,7 +124,7 @@ def update_cold_test(data):
             SET
                 
                 mc_ave_vol_c =%s,
-mc_a            ve_cur_c =%s,
+                mc_ave_cur_c =%s,
                 secondary_calibration = %s,
                 initial_cold_voltage = %s,
                 initial_cold_current = %s,
@@ -251,8 +251,8 @@ def update_cold_traces(board_id,data
                                json.dumps(data["input_step_voltage_voltage_trace"]),
                                json.dumps(data["input_step_voltage_current_trace"]),
 
-                               json.dumps(data["multiple_power_cycle_voltage"]),
-                               json.dumps(data["multiple_power_cycle_current"]),
+                               json.dumps(data["multiple_power_cycle_voltage_c"]),
+                               json.dumps(data["multiple_power_cycle_current_c"]),
 
                                board_id,
                            ))

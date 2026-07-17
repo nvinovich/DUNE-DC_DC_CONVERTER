@@ -5,6 +5,8 @@ import psycopg
 import sys
 import subprocess
 from WorkbookCreator import *
+import matplotlib as mp
+import numpy as np
 init(autoreset=True)
 
 #updates here too
@@ -204,9 +206,62 @@ def Test_Results_Getter(DD, XLSX_NAME) -> None:
 
     wb.save(output_file)
 
+def Voltage_Histogram(board_id,
+                      trace_column="multiple_power_cycle_voltage",
+                      output_folder=r"C:\Users\StudentAdmin\Desktop"):
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+
+            cursor.execute(f"""
+                SELECT {trace_column}
+                FROM board_traces
+                WHERE board_id = %s
+            """, (board_id,))
+
+            row = cursor.fetchone()
+
+    if row is None:
+        print(f"No data found for board {board_id}")
+        return
+
+    if row[0] is None:
+        print(f"{trace_column} is empty for board {board_id}")
+        return
+
+    pc_vols = json.loads(row[0])
+
+    avg_voltage = np.mean(pc_vols)
+    std_voltage = np.std(pc_vols)
+
+    mp.figure(figsize=(8,5))
+
+    mp.hist(
+        pc_vols,
+        bins=100,
+        label="Voltage Samples"
+    )
+
+    mp.legend(
+        title=f"Ave = {avg_voltage:.5f} V\nStDev = {std_voltage:.5f} V"
+    )
+
+    mp.title(f"Voltage for {board_id}")
+    mp.xlabel("Voltage (V)")
+    mp.ylabel("Samples at Voltage")
+    mp.grid(True)
+
+    filename = f"{board_id}_{trace_column}.png"
+    save_path = os.path.join(output_folder, filename)
+
+    mp.savefig(save_path, dpi=300, bbox_inches="tight")
+    mp.close()
+
+    print(Fore.GREEN + f"Histogram saved to:\n{save_path}")
+
 if __name__ == "__main__":
     TRCHOICE = input(Fore.MAGENTA + ">Download full test data (1)\n>Download specific board trace (2) \n"
-                            ">Download full SQL image (3)\n"
+                                    ">Download power cycle graphs (3)\n"
+                            ">Download full SQL image (4)\n"
                             "Choose a readback option: ")
 
     if TRCHOICE == "2":
@@ -220,7 +275,7 @@ if __name__ == "__main__":
         Test_Results_Getter(DD,XLSX_NAME)
         print(Fore.LIGHTCYAN_EX + "TEST DOWNLOAD COMPLETE")
 
-    elif TRCHOICE == "3":
+    elif TRCHOICE == "4":
         #needs usb or other external mount at D
         drive_letter = "D"
         if os.path.exists(f"{drive_letter.upper()}:\\"):
@@ -244,6 +299,8 @@ if __name__ == "__main__":
                 print(f"Error creating folder or file: {e}")
         else:
             print(f"{drive_letter.upper()}: DRIVE NOT FOUND.")
+
+    elif TRCHOICE == "3":
 
     else:
         sys.exit("INVALID SELECTION")
