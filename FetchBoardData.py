@@ -5,6 +5,8 @@ import psycopg
 import sys
 import subprocess
 from WorkbookCreator import *
+import matplotlib.pyplot as mp
+import numpy as np
 init(autoreset=True)
 
 #updates here too
@@ -114,7 +116,7 @@ def Trace_Getter(board_id,output_path):
         print(Fore.LIGHTCYAN_EX + f"{board_id} TRACE DOWNLOAD COMPLETE")
 
 def Export_All_Traces(output_folder):
-    """Exports every board trace to its own xlsx file"""
+    """Exports every board trace to its own xlsx file by iteratively calling Trace_Getter()"""
     with get_connection() as conn:
         with conn.cursor() as cursor:
 
@@ -165,25 +167,29 @@ def Test_Results_Getter(DD, XLSX_NAME) -> None:
     df = df.rename(columns={
         "board_id": "BOARD ID",
         "timestamp": "TIMESTAMP",
-        "calibrated_voltage": "CALIBRATED INPUT VOLTAGE",
+
+        "calibrated_voltage": "CALIBRATED INPUT VOLTAGE (WARM)",
         "initial_voltage": "INITIAL OUTPUT VOLTAGE",
         "initial_current": "INITIAL OUTPUT CURRENT",
         "initial_start_up": "INITIAL START UP",
         "input_voltage_sweep": "INPUT VOLTAGE SWEEP",
         "nominal_load_performance": "NOMINAL LOAD PERFORMANCE",
 
-        "mc_ave_vol": "WARM_POWERCYCLE_AVE_VOLTAGE",
-        "mc_ave_cur": "WARM_POWERCYCLE_AVE_CURRENT",
-        "mc_ave_vol_c": "COLD_POWERCYCLE_AVE_VOLTAGE",
-        "mc_ave_cur_c": "COLD_POWERCYCLE_AVE_CURRENT",
+        "voltage_dev_warm": "WARM VOLTAGE DEVIATION",
+        "mc_ave_vol": "WARM POWERCYCLE AVE VOLTAGE",
+        "mc_ave_cur": "WARM POWERCYCLE AVE CURRENT",
 
-        "secondary_calibration": "COLD CALIBRATION",
+        "secondary_calibration": "CALIBRATED INPUT VOLTAGE (COLD)",
         "initial_cold_voltage": "INITIAL COLD VOLTAGE",
         "initial_cold_current": "INITIAL COLD CURRENT",
         "input_current_output_voltage": "INITIAL CURRENT OUTPUT VOLTAGE",
         "output_step_load": "OUTPUT STEP LOAD",
         "input_step_voltage": "INPUT STEP VOLTAGE",
         "cold_start_up": "COLD START UP",
+
+        "voltage_dev_cold": "COLD VOLTAGE DEVIATION",
+        "mc_ave_vol_c": "COLD POWERCYCLE AVE VOLTAGE",
+        "mc_ave_cur_c": "COLD POWERCYCLE AVE CURRENT",
     })
     df.to_excel(output_file, index=False)
     wb = load_workbook(output_file)
@@ -204,23 +210,84 @@ def Test_Results_Getter(DD, XLSX_NAME) -> None:
 
     wb.save(output_file)
 
+def Voltage_Histogram(board_id,xrs,temp="(Warm)",
+                      trace_column="multiple_power_cycle_voltage",
+                      output_folder=r"C:\Users\StudentAdmin\Desktop"):
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+
+            cursor.execute(f"""
+                SELECT {trace_column}
+                FROM board_traces
+                WHERE board_id = %s
+            """, (board_id,))
+
+            row = cursor.fetchone()
+
+    if row is None:
+        print(f"No data found for board {board_id}")
+        return
+
+    if row[0] is None:
+        print(f"{trace_column} is empty for board {board_id}")
+        return
+
+    pc_vols = json.loads(row[0])
+
+    avg_voltage = np.mean(pc_vols)
+    std_voltage = np.std(pc_vols)
+
+    mp.figure(figsize=(8,5))
+
+    mp.hist(
+        pc_vols,
+        bins=50
+    )
+    #added in clearance zone plotting
+    mp.axvspan(xrs[0],xrs[1], alpha=0.35, color="grey", label="Ideal Operating Range")
+
+    mp.legend(
+        title=f"Ave = {avg_voltage:.5f} V\nStDev = {std_voltage:.5f} V"
+    )
+
+    mp.title(f"Voltage Behavior for {board_id}" + temp)
+    mp.xlabel("Voltage (V)")
+    mp.ylabel("Samples at Voltage")
+    mp.grid(True)
+
+    filename = f"{board_id}_{trace_column}.png"
+    save_path = os.path.join(output_folder, filename)
+
+    mp.savefig(save_path, dpi=300, bbox_inches="tight")
+    mp.close()
+
+    print(Fore.GREEN + f"Histogram saved to:\n{save_path}")
+
 if __name__ == "__main__":
-    TRCHOICE = input(Fore.MAGENTA + ">Download full test data (1)\n>Download specific board trace (2) \n"
-                            ">Download full SQL image (3)\n"
+    TRCHOICE = input(Fore.MAGENTA + ">Download full SQL data to PC (1)\n"
+                                    ">Download full SQL data to external drive (2)\n"
+                                    ">Download specific board voltage stability plot (3)\n"
                             "Choose a readback option: ")
 
-    if TRCHOICE == "2":
-        #baord choice saver
-        board_id = input(Fore.MAGENTA + "Enter board id: ")
-        output_path = DD + rf"\{board_id}.xlsx"
-        Trace_Getter(board_id,output_path)
+    if TRCHOICE == "1":
+        folder_path = os.path.join(DD, "DB_IMAGE")
 
-    elif TRCHOICE == "1":
-        #this path saves the full test data so far
-        Test_Results_Getter(DD,XLSX_NAME)
-        print(Fore.LIGHTCYAN_EX + "TEST DOWNLOAD COMPLETE")
+        try:
+            os.makedirs(folder_path, exist_ok=True)
+            Test_Results_Getter(folder_path, XLSX_NAME)
+            print(Fore.GREEN + "TEST DOWNLOAD COMPLETE")
+            # now that this saves, lets give it a moment and then write all trace data, this may take some time
+            time.sleep(0.2)
+            Export_All_Traces(folder_path)
 
-    elif TRCHOICE == "3":
+        # just some generic error throws I stole that should be helpful
+        except PermissionError:
+            print("Error: No permission to write to this drive.")
+        except OSError as e:
+            print(f"Error creating folder or file: {e}")
+
+
+    elif TRCHOICE == "2":
         #needs usb or other external mount at D
         drive_letter = "D"
         if os.path.exists(f"{drive_letter.upper()}:\\"):
@@ -244,6 +311,15 @@ if __name__ == "__main__":
                 print(f"Error creating folder or file: {e}")
         else:
             print(f"{drive_letter.upper()}: DRIVE NOT FOUND.")
+
+    elif TRCHOICE == "3":
+        # specific board behavior plotting
+        board_id = int(input("Board ID: "))
+        if input("Warm or Cold Stability? (W/c)").lower() == "w":
+            Voltage_Histogram(board_id, [58.0, 61.0])
+            sys.exit()
+        Voltage_Histogram(board_id, trace_column="multiple_power_cycle_voltage_c",
+                          xrs=[48.0, 50.0], temp="(Cold)")
 
     else:
         sys.exit("INVALID SELECTION")
