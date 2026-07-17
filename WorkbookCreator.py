@@ -23,6 +23,8 @@ def init_db():
     with get_connection() as conn:
         with conn.cursor() as cursor:
             cursor.execute("""
+            
+            
             CREATE TABLE IF NOT EXISTS dc_dc_tests (
                 id SERIAL PRIMARY KEY,
                 
@@ -35,6 +37,11 @@ def init_db():
                 initial_start_up TEXT,
                 input_voltage_sweep TEXT,
                 nominal_load_performance TEXT,
+                
+                mc_ave_vol REAL,
+                mc_ave_cur REAL,
+                mc_ave_vol_c REAL,
+                mc_ave_cur_C REAL,
             
                 secondary_calibration TEXT,
                 initial_cold_voltage REAL,
@@ -63,6 +70,12 @@ def insert_test(data):
                 initial_start_up,
                 input_voltage_sweep,
                 nominal_load_performance,
+                
+                mc_ave_vol,    
+                mc_ave_cur,
+                mc_ave_vol_c,    
+                mc_ave_cur_c,
+                
                 secondary_calibration,
                 initial_cold_voltage,
                 initial_cold_current,
@@ -70,7 +83,8 @@ def insert_test(data):
                 output_step_load,
                 input_step_voltage,
                 cold_start_up
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s,%s,%s, %s, %s,%s,%s,%s)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s,
+                      %s,%s, %s, %s,%s,%s,%s,%s, %s,%s,%s)
             """, (
                 data["board_id"],
                 datetime.now(),
@@ -80,6 +94,13 @@ def insert_test(data):
                 data["initial_start_up"],
                 data["input_voltage_sweep"],
                 data["nominal_load_performance"],
+
+                #adding even more fun statistics
+                data["mc_ave_vol"],
+                data["mc_ave_cur"],
+                data["mc_ave_vol_c"],
+                data["mc_ave_cur_c"],
+                
                 data["secondary_calibration"],
                 data["initial_cold_voltage"],
                 data["initial_cold_current"],
@@ -88,6 +109,7 @@ def insert_test(data):
                 data["input_step_voltage"],
                 data["cold_start_up"],
             ))
+            conn.commit()
 
 def update_cold_test(data):
     '''updates cold test data'''
@@ -100,6 +122,9 @@ def update_cold_test(data):
             UPDATE dc_dc_tests
         
             SET
+                
+                mc_ave_vol_c =%s,
+mc_a            ve_cur_c =%s,
                 secondary_calibration = %s,
                 initial_cold_voltage = %s,
                 initial_cold_current = %s,
@@ -128,64 +153,107 @@ def update_cold_test(data):
 
 def init_trace_db():
     """trace data db"""
-
+#multiple power cycle dump slots added
     with get_connection() as conn:
         with conn.cursor() as cursor:
             cursor.execute("""
             CREATE TABLE IF NOT EXISTS board_traces (
-                id SERIAL PRIMARY KEY,
-            
-                board_id TEXT UNIQUE,
-                timestamp TIMESTAMP,
-            
-                input_voltage_sweep_trace TEXT,
-                nominal_load_trace TEXT,         
-                input_step_voltage_trace TEXT,
-                output_step_load_trace TEXT,
-                cold_startup_trace TEXT
-            )
+    id SERIAL PRIMARY KEY,
+
+    board_id TEXT UNIQUE,
+    timestamp TIMESTAMP,
+
+    input_voltage_sweep_voltage_trace TEXT,
+    input_voltage_sweep_current_trace TEXT,
+
+    nominal_load_voltage_trace TEXT,
+    nominal_load_current_trace TEXT,
+                
+    multiple_power_cycle_voltage TEXT,
+    multiple_power_cycle_current TEXT,
+    multiple_power_cycle_voltage_c TEXT,
+    multiple_power_cycle_current_c TEXT,
+
+    input_step_voltage_voltage_trace TEXT,
+    input_step_voltage_current_trace TEXT,
+
+    output_step_load_voltage_trace TEXT,
+    output_step_load_current_trace TEXT,
+
+    cold_startup_voltage_trace TEXT,
+    cold_startup_current_trace TEXT
+)
             """)
             conn.commit()
 
-def insert_warm_traces(board_id, sweep, nominal):
+def insert_warm_traces(board_id,data):
+    '''inserts new traces'''
+        #updating the struct here to also track current
 
     with get_connection() as conn:
         with conn.cursor() as cursor:
             cursor.execute("""
-            INSERT INTO board_traces
-            (
-                board_id,
-                timestamp,
-                input_voltage_sweep_trace,
-                nominal_load_trace
-            )
-            VALUES (%s,%s,%s,%s)
-            """,
-            (
-                board_id,
-                datetime.now(),
-                json.dumps(sweep),
-                json.dumps(nominal)
-            ))
+                           INSERT INTO board_traces
+                           (board_id,
+                            timestamp,
+                            input_voltage_sweep_voltage_trace,
+                            input_voltage_sweep_current_trace,
+                            nominal_load_voltage_trace,
+                            nominal_load_current_trace,
+                            multiple_power_cycle_voltage,
+                            multiple_power_cycle_current
+                            )
+                           VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                           """,
+                           (
+                               board_id,
+                               datetime.now(),
+                               json.dumps(data["input_voltage_sweep_voltage_trace"]),
+                               json.dumps(data["input_voltage_sweep_current_trace"]),
+                               json.dumps(data["nominal_load_voltage_trace"]),
+                               json.dumps(data["nominal_load_current_trace"]),
+                               #added dump slots for mc values
+                               json.dumps(data["multiple_power_cycle_voltage"]),
+                               json.dumps(data["multiple_power_cycle_current"]),
+
+                           ))
             conn.commit()
 
-def update_cold_traces(board_id, cold, step, input_step):
+def update_cold_traces(board_id,data
+):
+    #sorry for ultra strange db formatting throughout this, but shame on you for prying :[
+    """Updates cold test traces for board trace schema version 2.0."""
     with get_connection() as conn:
         with conn.cursor() as cursor:
             cursor.execute("""
-            UPDATE board_traces
-            
-            SET
-                cold_startup_trace=%s,
-                output_step_load_trace=%s,
-                input_step_voltage_trace=%s
-            
-            WHERE board_id=%s
-            """,
-            (
-                json.dumps(cold),
-                json.dumps(step),
-                json.dumps(input_step),
-                board_id
-            ))
+                           UPDATE board_traces
+                           SET cold_startup_voltage_trace=%s,
+                               cold_startup_current_trace=%s,
+
+                               output_step_load_voltage_trace=%s,
+                               output_step_load_current_trace=%s,
+
+                               input_step_voltage_voltage_trace=%s,
+                               input_step_voltage_current_trace=%s,
+                               
+                                multiple_power_cycle_voltage_c=%s,
+                                multiple_power_cycle_current_c=%s
+
+                           WHERE board_id = %s
+                           """,
+                           (
+                               json.dumps(data["cold_startup_voltage_trace"]),
+                               json.dumps(data["cold_startup_current_trace"]),
+
+                               json.dumps(data["output_step_load_voltage_trace"]),
+                               json.dumps(data["output_step_load_current_trace"]),
+
+                               json.dumps(data["input_step_voltage_voltage_trace"]),
+                               json.dumps(data["input_step_voltage_current_trace"]),
+
+                               json.dumps(data["multiple_power_cycle_voltage"]),
+                               json.dumps(data["multiple_power_cycle_current"]),
+
+                               board_id,
+                           ))
             conn.commit()

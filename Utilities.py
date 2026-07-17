@@ -178,6 +178,20 @@ def AUTOCALIBRATE_TO_IDEAL_INCOMING_VOLTAGE(  DMM: Resource, PS: Resource, IDEAL
         time.sleep(0.5)
         Calibration_Timeout -=1
 
+        if CALIBRATED_VOLTAGE_IN >= 5.5:
+            #throws a fun new error for severe over or under voltage, prompt a hardware check
+            DMM.write("*RST")
+            PS.write("*RST")
+            final_time = round(time.time() - start_time, 3)
+            winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
+            sys.exit("AUTOCALIBRATION FAILED DUE TO EXCESS OVER VOLTAGE AT " + str(final_time) + " SEC.")
+        if CALIBRATED_VOLTAGE_IN <= 4.5:
+            DMM.write("*RST")
+            PS.write("*RST")
+            final_time = round(time.time() - start_time, 3)
+            winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
+            sys.exit("AUTOCALIBRATION FAILED DUE TO EXCESS UNDER VOLTAGE AT " + str(final_time) + " SEC.")
+
     if debug:
         final_time = round(time.time() - start_time,3)
         print(Back.LIGHTCYAN_EX + Fore.BLACK + str(final_time) + " sec. elapsed in calibration")
