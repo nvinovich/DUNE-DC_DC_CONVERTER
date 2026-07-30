@@ -1,5 +1,6 @@
 This is the testing framework for use in Iowa's DUNE DC to DC Converter Box assembly, in a nearly complete state.
-All files are required for proper execution, but only MainTesting must be ran to begin testing.
+All files are required for proper execution, but only MainTesting must be run. In order to assure database consistency,
+please ensure that each board ID is consistent across both temperature sets (CASE SENSITIVE).
 
 Testing parameters can be configured at the top of MainTesting.
 
@@ -9,4 +10,4 @@ are Input Voltage Trace 3000ms, Nominal Load Trace 2000ms, Input Step Voltage Tr
 and Cold Startup Trace 5000ms. Power cycle tests are done over 5 cycles with 20 measurements of current and voltage
 each.
 
-For now, all the tests that need be done are contained in Maintesting.
+For now, all the tests that need be done are contained in MainTesting.
