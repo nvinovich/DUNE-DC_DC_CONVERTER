@@ -37,27 +37,27 @@ def init_db():
                 timestamp TIMESTAMP,
             
                 calibrated_voltage TEXT,
-                initial_voltage REAL,
-                initial_current REAL,
+                initial_voltage TEXT,
+                initial_current TEXT,
                 initial_start_up TEXT,
                 input_voltage_sweep TEXT,
                 nominal_load_performance TEXT,
                 
-                voltage_dev_warm REAL,
-                mc_ave_vol REAL,
-                mc_ave_cur REAL,
+                voltage_dev_warm TEXT,
+                mc_ave_vol TEXT,
+                mc_ave_cur TEXT,
             
                 secondary_calibration TEXT,
-                initial_cold_voltage REAL,
-                initial_cold_current REAL,
+                initial_cold_voltage TEXT,
+                initial_cold_current TEXT,
                 input_current_output_voltage TEXT,
                 output_step_load TEXT,
                 input_step_voltage TEXT,
                 cold_start_up TEXT,
                 
-                voltage_dev_cold REAL,
-                mc_ave_vol_c REAL,
-                mc_ave_cur_c REAL
+                voltage_dev_cold TEXT,
+                mc_ave_vol_c TEXT,
+                mc_ave_cur_c TEXT
             )
             """)
             conn.commit()

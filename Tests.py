@@ -53,8 +53,8 @@ def Initial_Start_Up_Test( DMM: Resource, PS: Resource,
         print(test_result2)
 
     #append to df
-    test_output["initial_voltage"] = test_result
-    test_output["initial_current"] = test_result2
+    test_output["initial_voltage"] = f"{test_result:e}"
+    test_output["initial_current"] = f"{test_result2:e}"
     if (test_result <= INITIAL_START_UP_VOLTAGE[1] and test_result >= INITIAL_START_UP_VOLTAGE[0]
             and test_result2 >= INITIAL_START_UP_CURRENT[1] and test_result2 <= INITIAL_START_UP_CURRENT[0]):
         test_output["initial_start_up"] = "PASS"
@@ -124,11 +124,11 @@ def Input_Voltage_Sweep(DMM: Resource, PS: Resource, INITIAL_START_UP_VOLTAGE: l
         round(float(datalist[i][:datalist[i].index("E")]) * 10 ** int(datalist[i][datalist[i].index("E") + 1:]),
               5) for i in range(len(datalist))]
 
-    trace_output["input_voltage_sweep_voltage_trace"] = datalist
+    trace_output["input_voltage_sweep_voltage_trace"] = [f"{i:e}" for i in datalist]
     datalist2 = [
         round(float(datalist2[i][:datalist2[i].index("E")]) * 10 ** int(datalist2[i][datalist2[i].index("E") + 1:]),
               5) for i in range(len(datalist2))]
-    trace_output["input_voltage_sweep_current_trace"] = datalist2
+    trace_output["input_voltage_sweep_current_trace"] = [f"{i:e}" for i in datalist2]
     for i in range(100):
         mean_val = datalist[i]
         if mean_val <= INITIAL_START_UP_VOLTAGE[0] or mean_val >= INITIAL_START_UP_VOLTAGE[1]:
@@ -184,7 +184,7 @@ def Nominal_Load_Performance(DMM: Resource, PS: Resource, RELAY,
         test_output["input_voltage_sweep"] = "ERR"
         return False
 
-    trace_output["nominal_load_trace"] = datalist
+    trace_output["nominal_load_trace"] = [f"{i:e}" for i in datalist]
     if all([dp <= VOLTAGE_RANGE[1] and dp >=VOLTAGE_RANGE[0] for dp in datalist]):
 
         test_output["nominal_load_performance"] = "PASS"
@@ -229,8 +229,8 @@ def Input_and_Ouput_Cold( DMM: Resource, PS: Resource,CALIBRATED_VOLTAGE_IN:floa
         print(test_result2)
 
     #append to df
-    test_output["initial_cold_voltage"] = test_result
-    test_output["initial_cold_current"] = test_result2
+    test_output["initial_cold_voltage"] = f"{test_result:e}"
+    test_output["initial_cold_current"] = f"{test_result2:e}"
     if (test_result <= COLD_V[1] and test_result >= COLD_V[0]
             and test_result2 <= COLD_C[1] and test_result2 >= COLD_C[0]):
         test_output["input_current_output_voltage"] = "PASS"
@@ -279,11 +279,6 @@ def Input_Voltage_Step(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN: float
         #mangled scipi formatting, had to do it manually
         datalist = [round(float(datalist[i][:datalist[i].index("E")])*10**int(datalist[i][datalist[i].index("E")+1:]),5)
                     for i in range(len(datalist))]
-        if show_plots:
-            mp.plot(datalist)
-            mp.xlabel("Time (ms)")
-            mp.ylabel("Voltage (V)")
-            mp.show()
     else:
         #errors on this test but does not break the testing loop
         test_output["input_step_voltage"] = "ERR"
@@ -292,7 +287,7 @@ def Input_Voltage_Step(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN: float
         print("final debug voltage for step voltage test ", datalist[-1])
 
     #puts datalist as trace
-    trace_output["input_step_voltage_voltage_trace"] = datalist
+    trace_output["input_step_voltage_voltage_trace"] =  [f"{i:e}" for i in datalist]
     if all([dp <= VOLTAGE_RANGE[1] and dp >=VOLTAGE_RANGE[0] for dp in datalist]):
         #this is just seeign if none jump out of allowed range
         test_output["input_step_voltage"] = "PASS"
@@ -353,7 +348,7 @@ def Output_Step_Load(DMM: Resource, PS: Resource, RELAY, CALIBRATED_VOLTAGE_IN,
     if debug:
         print("final step voltage ", datalist[-1])
 
-    trace_output["output_step_load_trace"] = datalist
+    trace_output["output_step_load_trace"] =  [f"{i:e}" for i in datalist]
     if all([dp <=COLD_V[1] and dp >=COLD_V[0] for dp in datalist]):
         test_output["output_step_load"] = "PASS"
         return True
@@ -362,7 +357,7 @@ def Output_Step_Load(DMM: Resource, PS: Resource, RELAY, CALIBRATED_VOLTAGE_IN,
         return False
 
 def Cold_Startup_Test(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V,
-                      test_output,trace_output,debug:bool) -> bool:
+                      test_output,trace_output,debug:bool,timer_debug: bool) -> bool:
     '''4.3.5'''
     #this test is just the warm start up but with cold specs
     PS.write("*RST")
@@ -372,7 +367,7 @@ def Cold_Startup_Test(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V
     input(Fore.MAGENTA + "Press ENTER to begin timer")
     print("Timer begun for 600 seconds...")
     #swithces off for full time to fully cool
-    if debug:
+    if timer_debug:
         time.sleep(3)
     else:
         time.sleep(600)
@@ -411,8 +406,9 @@ def Cold_Startup_Test(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V
               5) for i in range(len(datalist))]
 
     #saves data and trace
-    trace_output["cold_startup_voltage_trace"] = datalist
-    average = np.average(datalist)
+    trace_output["cold_startup_voltage_trace"] =  [f"{i:e}" for i in datalist]
+
+    #this just tells us that it passes if it stabilizes by the ending 10 entries
     if all([dp <=COLD_V[1] and dp >=COLD_V[0] for dp in datalist][-10:]):
         test_output["cold_start_up"] = "PASS"
         return True
@@ -486,17 +482,17 @@ def SINGLE_POWER_CYCLE_TEST(PS: Resource, DMM: Resource, which,
 
     # this selects which data sheet to update
     if which == "w":
-        test_output["mc_ave_vol"] = avg_voltage
-        test_output["mc_ave_cur"] = ave_current
-        trace_output["multiple_power_cycle_voltage"] = pc_vols
-        trace_output["multiple_power_cycle_current"] = pc_cur
-        test_output["voltage_dev_warm"] = std_voltage
+        test_output["mc_ave_vol"] = f"{avg_voltage:e}"
+        test_output["mc_ave_cur"] = f"{ave_current:e}"
+        trace_output["multiple_power_cycle_voltage"] = [f"{i:e}" for i in pc_vols]
+        trace_output["multiple_power_cycle_current"] = [f"{i:e}" for i in pc_cur]
+        test_output["voltage_dev_warm"] = f"{std_voltage:e}"
     elif which == "c":
-        test_output["mc_ave_vol_c"] = avg_voltage
-        test_output["mc_ave_cur_c"] = ave_current
-        trace_output["multiple_power_cycle_voltage_c"] = pc_vols
-        trace_output["multiple_power_cycle_current_c"] = pc_cur
-        test_output["voltage_dev_cold"] = std_voltage
+        test_output["mc_ave_vol_c"] = f"{avg_voltage:e}"
+        test_output["mc_ave_cur_c"] = f"{ave_current:e}"
+        trace_output["multiple_power_cycle_voltage_c"] =  [f"{i:e}" for i in pc_vols]
+        trace_output["multiple_power_cycle_current_c"] = [f"{i:e}" for i in pc_cur]
+        test_output["voltage_dev_cold"] = f"{std_voltage:e}"
 
 def POWER_CYCLE_TEST(PS,DMM,which,
                      CALIBRATED_VOLTAGE_IN: bool, test_output,trace_output):
@@ -565,14 +561,15 @@ def POWER_CYCLE_TEST(PS,DMM,which,
 
     #this selects which data sheet to update
     if which == "w":
-        test_output["mc_ave_vol"]= avg_voltage
-        test_output["mc_ave_cur"] = ave_current
-        trace_output["multiple_power_cycle_voltage"] = pc_vols
-        trace_output["multiple_power_cycle_current"] = pc_cur
-        test_output["voltage_dev_warm"] = std_voltage
+        test_output["mc_ave_vol"] = f"{avg_voltage:e}"
+        test_output["mc_ave_cur"] = f"{ave_current:e}"
+        trace_output["multiple_power_cycle_voltage"] = [f"{i:e}" for i in pc_vols]
+        trace_output["multiple_power_cycle_current"] = [f"{i:e}" for i in pc_cur]
+        test_output["voltage_dev_warm"] = f"{std_voltage:e}"
     elif which == "c":
-        test_output["mc_ave_vol_c"]= avg_voltage
-        test_output["mc_ave_cur_c"] = ave_current
-        trace_output["multiple_power_cycle_voltage_c"] = pc_vols
-        trace_output["multiple_power_cycle_current_c"] = pc_cur
-        test_output["voltage_dev_cold"] = std_voltage
+        test_output["mc_ave_vol_c"] = f"{avg_voltage:e}"
+        test_output["mc_ave_cur_c"] = f"{ave_current:e}"
+        trace_output["multiple_power_cycle_voltage_c"] =  [f"{i:e}" for i in pc_vols]
+        trace_output["multiple_power_cycle_current_c"] = [f"{i:e}" for i in pc_cur]
+        test_output["voltage_dev_cold"] = f"{std_voltage:e}"
+        #added in sci not.

@@ -1,9 +1,10 @@
 from colorama import init, Fore, Back, Style
-from Utilities import AUTOCALIBRATE_TO_IDEAL_INCOMING_VOLTAGE
 init(autoreset=True)
 import Utilities
 from WorkbookCreator import *
 from Tests import *
+from tkinter import *
+from tkinter import ttk
 
 #init dbs if not already
 init_db()
@@ -23,8 +24,41 @@ INPUT_CURRENT_COLD = [0.025,0.027]
 #DEBUG CONFIG SETTINGS
 power_cycle_test = False     #turn this off during typical testing
 MULTIPLE_POWER_CYCLES = False
-debug = True #general debug to see more numbers during testing
+debug = False #general debug to see more numbers during testing
+timer_debug = True #timer negation for quenching times
 #======================================================================================================================#
+
+import tkinter as tk
+from tkinter import messagebox
+
+def on_button_click():
+    """Event handler for button click."""
+    user_text = entry.get().strip()
+    if user_text:
+        messagebox.showinfo("Greeting", f"Hello, {user_text}!")
+    else:
+        messagebox.showwarning("Input Error", "Please enter your name.")
+
+# Create the main window
+root = tk.Tk()
+root.title("Tkinter Demo")
+root.geometry("300x150")  # Width x Height
+
+# Create a label
+label = tk.Label(root, text="Enter your name:")
+label.pack(pady=5)
+
+# Create a text entry field
+entry = tk.Entry(root, width=25)
+entry.pack(pady=5)
+
+# Create a button
+button = tk.Button(root, text="Greet Me", command=on_button_click)
+button.pack(pady=10)
+
+# Start the Tkinter event loop
+root.mainloop()
+
 
 if __name__=='__main__':
 
@@ -161,10 +195,10 @@ if __name__=='__main__':
 
                 test_output["calibrated_voltage_warm"] = (str(round(CALIBRATED_VOLTAGE_IN, 5)) +
                                                           " IN " + "/ " + str(round(inboard, 5)) + " OUT")
-                if all([test_output["mc_ave_vol"] <= INITIAL_START_UP_VOLTAGE[1], test_output["mc_ave_vol"] >=
-                                                                                  INITIAL_START_UP_VOLTAGE[0],
-                        test_output["mc_ave_cur"] <= INITIAL_START_UP_CURRENT[1],
-                        test_output["mc_ave_cur"] >= INITIAL_START_UP_CURRENT[0]]):
+                if all([test_output["mc_ave_vol"] <= bool(INITIAL_START_UP_VOLTAGE[1]), test_output["mc_ave_vol"] >=
+                                                                                  bool(INITIAL_START_UP_VOLTAGE[0]),
+                        test_output["mc_ave_cur"] <= bool(INITIAL_START_UP_CURRENT[1]),
+                        test_output["mc_ave_cur"] >= bool(INITIAL_START_UP_CURRENT[0])]):
                     # pass condition ^
                     test_output["within_range1"] = "PASS"
                     print("WARM OPERATIONAL RANGE: ", Fore.GREEN + "PASS")
@@ -193,7 +227,7 @@ if __name__=='__main__':
             PS.write("OUTP ON")
             input(Fore.MAGENTA + "Submerge board in liquid argon for 300 seconds, press ENTER to start timer")
             print("Timer begun for 300 seconds...")
-            if debug:
+            if timer_debug:
                 time.sleep(3)
             else:
                 time.sleep(300)
@@ -229,7 +263,8 @@ if __name__=='__main__':
                 print("INPUT VOLTAGE STEP: ", Fore.RED + "FAIL")
         #4.3.6
             time.sleep(0.5)
-            if Cold_Startup_Test(DMM,PS,CALIBRATED_VOLTAGE_IN,OUTPUT_VOLTAGE_COLD,test_output,trace_output,debug):
+            if Cold_Startup_Test(DMM,PS,CALIBRATED_VOLTAGE_IN,OUTPUT_VOLTAGE_COLD,test_output,trace_output,
+                                 debug,timer_debug):
                 print("INPUT VOLTAGE STEP: ", Fore.GREEN + "PASS")
             else:
                 print("INPUT VOLTAGE STEP: ", Fore.RED + "FAIL")
@@ -241,10 +276,10 @@ if __name__=='__main__':
                     SINGLE_POWER_CYCLE_TEST(PS, DMM, CorW, CALIBRATED_VOLTAGE_IN, test_output, trace_output)
                 test_output["calibrated_voltage_cold"] = (str(round(CALIBRATED_VOLTAGE_IN, 5)) +
                                                           " IN " + "/ " + str(round(inboard, 5)) + " OUT")
-                if all([test_output["mc_ave_vol_c"] <= OUTPUT_VOLTAGE_COLD[1], test_output["mc_ave_vol_c"] >=
-                                                                               OUTPUT_VOLTAGE_COLD[0],
-                        test_output["mc_ave_cur_c"] <= INPUT_CURRENT_COLD[1],
-                        test_output["mc_ave_cur_c"] >= INPUT_CURRENT_COLD[0]]):
+                if all([test_output["mc_ave_vol_c"] <= bool(OUTPUT_VOLTAGE_COLD[1]), test_output["mc_ave_vol_c"] >=
+                                                                               bool(OUTPUT_VOLTAGE_COLD[0]),
+                        test_output["mc_ave_cur_c"] <= bool(INPUT_CURRENT_COLD[1]),
+                        test_output["mc_ave_cur_c"] >= bool(INPUT_CURRENT_COLD[0])]):
                     # pass condition ^
                     test_output["within_range2"] = "PASS"
                     print("COLD OPERATIONAL RANGE: ", Fore.GREEN + "PASS")
