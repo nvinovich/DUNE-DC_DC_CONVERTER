@@ -6,9 +6,9 @@ testing_cycle = "NON_SHIELDED"
 IDEAL_INCOMING_VOLTAGE = 5.0
 CALIBRATED_VOLTAGE_IN = 5.0
 INITIAL_START_UP_VOLTAGE = [58.0,61.0]
-INITIAL_START_UP_CURRENT = [0.035,0.033]
+INITIAL_START_UP_CURRENT = [0.035,0.031] #for now, widening this as mr miller says its ok
 OUTPUT_VOLTAGE_COLD = [48.0,51.0]
-INPUT_CURRENT_COLD = [0.025,0.027]
+INPUT_CURRENT_COLD = [0.023,0.027] #same here
 
 #DEBUG CONFIG SETTINGS
 power_cycle_test = False     #turn this off during typical testing

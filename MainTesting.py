@@ -1,6 +1,8 @@
-import sys
-
 from colorama import init, Fore, Back, Style
+from psycopg.errors import UniqueViolation
+
+from FetchBoardData import Select_Phase
+
 init(autoreset=True)
 import Utilities
 from WorkbookCreator import *
@@ -11,14 +13,15 @@ from Config import *
 
 #init dbs if not already
 init_db()
-
+init_phase_table()
 init_trace_db()
+
 Utilities.DUNE_ASCII()
 
 if __name__=='__main__':
 
     #Check for good multimeter and power supply connections
-    print(Fore.BLUE + "COMPREHENSIVE DCDC CONVERTER TESTING CYCLE")
+    print(Fore.CYAN + "COMPREHENSIVE DCDC CONVERTER TESTING CYCLE")
 
     print("Checking for resources...")
     RELAY = Utilities.SERIAL_CONNECTOR()
@@ -26,7 +29,7 @@ if __name__=='__main__':
     DMM,PS = Utilities.RESOURCE_CONNECTOR(RM)
 
     #if it makes it this far, we are good to go
-    print(Fore.GREEN + "All resources connected successfully.\n")
+    print(Fore.GREEN + "All resources connected successfully.")
 
     #Configure and reset meters
     DMM.write("*RST")
@@ -40,13 +43,20 @@ if __name__=='__main__':
     #testing loop:
     first = True
     test_more_boards_o7 = True
+
+    #ask for phase and admin name
+    phase = Select_Phase()
+    admin = input(Fore.MAGENTA + "Tests administered by: " )
+    print()
+
     while test_more_boards_o7:
     #starts storing data for next board
         test_output = {
-            "board_id": "NA",
-            "testing_cycle": "NA",
+            "board_id": "NA", #warm
+            "phase": phase,
+            "testing_admin": admin,
 
-            "calibrated_voltage": -1,#warm
+            "calibrated_voltage": -1,
             "initial_voltage": -1,
             "initial_current": -1,
             "initial_start_up": "NULL",
@@ -102,19 +112,15 @@ if __name__=='__main__':
         input(Fore.MAGENTA + "Confirm that all power supply channels are OFF by pressing ENTER")
 
         if first == True:
-            print(Fore.MAGENTA + "Test Cycle:", Fore.WHITE + "{testing_cycle}")
-            CorT = input(Fore.MAGENTA + "Is this correct? (y/n) ").lower() == "y"
-            if CorT != "y":
-                sys.exit("Please alter config parameters to match appropriate testing cycle.")
             first = False
         else:
-            input(Fore.MAGENTA + "Place board in test stand, press ENTER to continue")
+            input(Fore.MAGENTA + "Replace current board if needed, press ENTER to continue")
 
         #this chunk takes a board id and checks to see if db already has warm data, which we will skip if there
         test_output["board_id"] = input(Fore.MAGENTA + "Board ID: ")
 
         # cold or warm
-        CorW = input(Fore.MAGENTA + "Warm or Cold Testing? (W/c)").lower()
+        CorW = input(Fore.MAGENTA + "Warm or Cold Testing? (W/c) ").lower()
 
         if CorW == 'w':
             input(Fore.MAGENTA + "Press ENTER to continue")
@@ -168,9 +174,12 @@ if __name__=='__main__':
                     print("WARM OPERATIONAL RANGE: ", Fore.RED + "FAIL")
 
         #save data for warm testing
-            insert_warm_traces(test_output["board_id"],test_output["testing_cycle"],
+            insert_warm_traces(test_output["board_id"],test_output["phase"],
                            trace_output)
-            insert_test(test_output)
+            try:
+                insert_test(test_output)
+            except UniqueViolation:
+                print("This board has already been tested in this phase.")
             print(Fore.LIGHTCYAN_EX + "WARM TEST RESULTS EXPORTED")
 
         elif CorW == 'c':        #cold
@@ -250,8 +259,7 @@ if __name__=='__main__':
 
         #log final results for this board
             update_cold_test(test_output)
-            update_cold_traces(test_output["board_id"],trace_output,
-                               test_output["testing_cycle"])
+            update_cold_traces(test_output["board_id"],test_output["phase"], trace_output)
             print(Fore.LIGHTCYAN_EX + "COLD TEST RESULTS EXPORTED")
             DMM.write("*CLS")
 

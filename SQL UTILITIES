@@ -1,6 +1,6 @@
 #can kill table with this command set, but please dont
-#DROP TABLE dc_dc_tests;
-#DROP TABLE board_traces;
+DROP TABLE dc_dc_tests;
+DROP TABLE board_traces;
 
 SELECT *
 FROM dc_dc_tests

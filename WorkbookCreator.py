@@ -29,9 +29,10 @@ def init_db():
             CREATE TABLE IF NOT EXISTS dc_dc_tests (
                 id SERIAL PRIMARY KEY,
                 
-                board_id TEXT,
+                board_id TEXT NOT NULL,
                 timestamp TIMESTAMP,
-                power_cycle TEXT,
+                phase TEXT NOT NULL,
+                testing_admin TEXT,
             
                 calibrated_voltage TEXT,
                 initial_voltage TEXT,
@@ -54,7 +55,9 @@ def init_db():
                 
                 voltage_dev_cold TEXT,
                 mc_ave_vol_c TEXT,
-                mc_ave_cur_c TEXT
+                mc_ave_cur_c TEXT,
+                
+                 UNIQUE (board_id, phase)
             )
             """)
             conn.commit()
@@ -69,6 +72,8 @@ def insert_test(data):
             INSERT INTO dc_dc_tests (
                 board_id,
                 timestamp,
+                phase,
+                testing_admin,
                 
                 calibrated_voltage,
                 initial_voltage,
@@ -93,11 +98,13 @@ def insert_test(data):
                 mc_ave_vol_c,
                 mc_ave_cur_c
                 
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s,
-                      %s,%s, %s, %s,%s,%s,%s,%s, %s,%s,%s, %s, %s)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s,%s,
+                      %s,%s, %s, %s,%s,%s,%s,%s, %s,%s,%s, %s, %s,%s)
             """, (
                 data["board_id"],
                 datetime.now(),
+                data["phase"],
+                data["testing_admin"],
 
                 data["calibrated_voltage"],
                 data["initial_voltage"],
@@ -149,6 +156,7 @@ def update_cold_test(data):
                 timestamp = %s
         
             WHERE board_id = %s
+            AND phase = %s
         
             """,
             (
@@ -164,7 +172,8 @@ def update_cold_test(data):
                 data["input_step_voltage"],
                 data["cold_start_up"],
                 datetime.now(),
-                data["board_id"]
+                data["board_id"],
+                data["phase"]
             ))
 
             conn.commit()
@@ -178,9 +187,9 @@ def init_trace_db():
             CREATE TABLE IF NOT EXISTS board_traces (
     id SERIAL PRIMARY KEY,
 
-    board_id TEXT,
+    board_id TEXT NOT NULL,
     timestamp TIMESTAMP,
-    testing_cycle TEXT,
+    phase TEXT NOT NULL,
 
     input_voltage_sweep_voltage_trace TEXT,
     input_voltage_sweep_current_trace TEXT,
@@ -201,12 +210,14 @@ def init_trace_db():
     output_step_load_current_trace TEXT,
 
     cold_startup_voltage_trace TEXT,
-    cold_startup_current_trace TEXT
+    cold_startup_current_trace TEXT,
+    
+    UNIQUE (board_id, phase)
 )
             """)
             conn.commit()
 
-def insert_warm_traces(board_id,testing_cycle,data):
+def insert_warm_traces(board_id,phase,data):
     '''inserts new traces'''
         #updating the struct here to also track current
 
@@ -216,7 +227,7 @@ def insert_warm_traces(board_id,testing_cycle,data):
                            INSERT INTO board_traces
                            (board_id,
                             timestamp,
-                            testing_cycle,
+                            phase,
                             input_voltage_sweep_voltage_trace,
                             input_voltage_sweep_current_trace,
                             nominal_load_voltage_trace,
@@ -229,7 +240,7 @@ def insert_warm_traces(board_id,testing_cycle,data):
                            (
                                board_id,
                                datetime.now(),
-                               testing_cycle,
+                               phase,
                                json.dumps(data["input_voltage_sweep_voltage_trace"]),
                                json.dumps(data["input_voltage_sweep_current_trace"]),
                                json.dumps(data["nominal_load_voltage_trace"]),
@@ -241,7 +252,7 @@ def insert_warm_traces(board_id,testing_cycle,data):
                            ))
             conn.commit()
 
-def update_cold_traces(board_id,testing_cycle,data
+def update_cold_traces(board_id,phase,data
 ):
     #sorry for ultra strange db formatting throughout this, but shame on you for prying :[
     """Updates cold test traces for board trace schema version 2.0."""
@@ -261,7 +272,7 @@ def update_cold_traces(board_id,testing_cycle,data
                                 multiple_power_cycle_voltage_c=%s,
                                 multiple_power_cycle_current_c=%s
 
-                           WHERE board_id = %s AND testing_cycle = %s
+                           WHERE board_id = %s AND phase = %s
                            """,
                            (
                                json.dumps(data["cold_startup_voltage_trace"]),
@@ -276,44 +287,79 @@ def update_cold_traces(board_id,testing_cycle,data
                                json.dumps(data["multiple_power_cycle_voltage_c"]),
                                json.dumps(data["multiple_power_cycle_current_c"]),
 
-                               board_id,testing_cycle,
+                               board_id,phase,
                            ))
             conn.commit()
 
 
-def rename_board_id(old_id, new_id):
+def rename_board_id(old_id, new_id, phase):
     '''updates an id to a new arg if it does not exist already'''
     with get_connection() as conn:
         with conn.cursor() as cursor:
             cursor.execute("""
                 SELECT board_id
                 FROM dc_dc_tests
-                WHERE board_id = %s
-            """, (new_id,))
-
+                WHERE board_id=%s
+                AND phase=%s
+            """, (new_id, phase))
             if cursor.fetchone():
                 raise ValueError(f"Board ID {new_id} already exists.")
-
             cursor.execute("""
                 UPDATE dc_dc_tests
                 SET board_id = %s
-                WHERE board_id = %s
-            """, (new_id, old_id))
-
+                WHERE board_id=%s
+                AND phase=%s
+            """, (new_id, old_id, phase))
             tests_updated = cursor.rowcount
-
             cursor.execute("""
                 UPDATE board_traces
                 SET board_id = %s
-                WHERE board_id = %s
-            """, (new_id, old_id))
-
+                WHERE board_id=%s
+                AND phase=%s
+            """, (new_id, old_id, phase))
             traces_updated = cursor.rowcount
-
             conn.commit()
-
     print(
         f"Renamed {old_id} -> {new_id}\n"
         f"Test rows updated: {tests_updated}\n"
         f"Trace rows updated: {traces_updated}"
     )
+
+def init_phase_table():
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS test_phases (
+                    id SERIAL PRIMARY KEY,
+                    phase TEXT UNIQUE NOT NULL
+                )
+            """)
+            conn.commit()
+
+def add_phase(phase_name):
+    """
+    Adds a new allowed testing phase.
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+
+            cursor.execute("""
+                SELECT phase
+                FROM test_phases
+                WHERE phase = %s
+            """, (phase_name,))
+
+            if cursor.fetchone():
+                raise ValueError(
+                    f"Phase '{phase_name}' already exists."
+                )
+
+            cursor.execute("""
+                INSERT INTO test_phases (phase)
+                VALUES (%s)
+            """, (phase_name,))
+
+            conn.commit()
+
+    print(f"Added new phase: {phase_name}")
