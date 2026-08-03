@@ -17,10 +17,6 @@ DB_INFO = {
 def get_connection():
     return psycopg.connect(**DB_INFO)
 
-#can kill table with this command set, but please dont
-#DROP TABLE dc_dc_tests;
-#DROP TABLE board_traces;
-
 #this whole routine is very touchy, it may cause issues for both db i/o and data collection if
 #you touch this file
 def init_db():
@@ -33,8 +29,9 @@ def init_db():
             CREATE TABLE IF NOT EXISTS dc_dc_tests (
                 id SERIAL PRIMARY KEY,
                 
-                board_id TEXT UNIQUE,
+                board_id TEXT,
                 timestamp TIMESTAMP,
+                power_cycle TEXT,
             
                 calibrated_voltage TEXT,
                 initial_voltage TEXT,
@@ -181,8 +178,9 @@ def init_trace_db():
             CREATE TABLE IF NOT EXISTS board_traces (
     id SERIAL PRIMARY KEY,
 
-    board_id TEXT UNIQUE,
+    board_id TEXT,
     timestamp TIMESTAMP,
+    testing_cycle TEXT,
 
     input_voltage_sweep_voltage_trace TEXT,
     input_voltage_sweep_current_trace TEXT,
@@ -208,7 +206,7 @@ def init_trace_db():
             """)
             conn.commit()
 
-def insert_warm_traces(board_id,data):
+def insert_warm_traces(board_id,testing_cycle,data):
     '''inserts new traces'''
         #updating the struct here to also track current
 
@@ -218,6 +216,7 @@ def insert_warm_traces(board_id,data):
                            INSERT INTO board_traces
                            (board_id,
                             timestamp,
+                            testing_cycle,
                             input_voltage_sweep_voltage_trace,
                             input_voltage_sweep_current_trace,
                             nominal_load_voltage_trace,
@@ -225,11 +224,12 @@ def insert_warm_traces(board_id,data):
                             multiple_power_cycle_voltage,
                             multiple_power_cycle_current
                             )
-                           VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                           VALUES (%s, %s, %s, %s, %s, %s, %s, %s,%s)
                            """,
                            (
                                board_id,
                                datetime.now(),
+                               testing_cycle,
                                json.dumps(data["input_voltage_sweep_voltage_trace"]),
                                json.dumps(data["input_voltage_sweep_current_trace"]),
                                json.dumps(data["nominal_load_voltage_trace"]),
@@ -241,7 +241,7 @@ def insert_warm_traces(board_id,data):
                            ))
             conn.commit()
 
-def update_cold_traces(board_id,data
+def update_cold_traces(board_id,testing_cycle,data
 ):
     #sorry for ultra strange db formatting throughout this, but shame on you for prying :[
     """Updates cold test traces for board trace schema version 2.0."""
@@ -261,7 +261,7 @@ def update_cold_traces(board_id,data
                                 multiple_power_cycle_voltage_c=%s,
                                 multiple_power_cycle_current_c=%s
 
-                           WHERE board_id = %s
+                           WHERE board_id = %s AND testing_cycle = %s
                            """,
                            (
                                json.dumps(data["cold_startup_voltage_trace"]),
@@ -276,7 +276,7 @@ def update_cold_traces(board_id,data
                                json.dumps(data["multiple_power_cycle_voltage_c"]),
                                json.dumps(data["multiple_power_cycle_current_c"]),
 
-                               board_id,
+                               board_id,testing_cycle,
                            ))
             conn.commit()
 

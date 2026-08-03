@@ -2,7 +2,7 @@ This is the testing framework for use in Iowa's DUNE DC to DC Converter Box asse
 All files are required for proper execution, but only MainTesting must be run. In order to assure database consistency,
 please ensure that each board ID is consistent across both temperature sets (CASE SENSITIVE).
 
-Testing parameters can be configured at the top of MainTesting.
+Configuration is done in Config.py, the procedure will typically prompt you when edits are needed.
 
 FetchBoardData will give you a list of all boards and their results on an Excel Sheet, and can also be used to retrieve
 the scope trace data of any board. User must change destination paths or data will fail to download. The trace lengths

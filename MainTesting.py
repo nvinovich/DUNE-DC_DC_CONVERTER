@@ -1,3 +1,5 @@
+import sys
+
 from colorama import init, Fore, Back, Style
 init(autoreset=True)
 import Utilities
@@ -5,60 +7,13 @@ from WorkbookCreator import *
 from Tests import *
 from tkinter import *
 from tkinter import ttk
+from Config import *
 
 #init dbs if not already
 init_db()
 
 init_trace_db()
 Utilities.DUNE_ASCII()
-
-#====================================================TESTING PARAMS====================================================#
-#These are to be chosen in accordance with the DC_DC Converter Report 2.1
-#voltage autocalibration
-IDEAL_INCOMING_VOLTAGE = 5.0
-CALIBRATED_VOLTAGE_IN = 5.0
-INITIAL_START_UP_VOLTAGE = [58.0,61.0]
-INITIAL_START_UP_CURRENT = [0.035,0.033]
-OUTPUT_VOLTAGE_COLD = [48.0,51.0]
-INPUT_CURRENT_COLD = [0.025,0.027]
-#DEBUG CONFIG SETTINGS
-power_cycle_test = False     #turn this off during typical testing
-MULTIPLE_POWER_CYCLES = False
-debug = False #general debug to see more numbers during testing
-timer_debug = True #timer negation for quenching times
-#======================================================================================================================#
-
-import tkinter as tk
-from tkinter import messagebox
-
-def on_button_click():
-    """Event handler for button click."""
-    user_text = entry.get().strip()
-    if user_text:
-        messagebox.showinfo("Greeting", f"Hello, {user_text}!")
-    else:
-        messagebox.showwarning("Input Error", "Please enter your name.")
-
-# Create the main window
-root = tk.Tk()
-root.title("Tkinter Demo")
-root.geometry("300x150")  # Width x Height
-
-# Create a label
-label = tk.Label(root, text="Enter your name:")
-label.pack(pady=5)
-
-# Create a text entry field
-entry = tk.Entry(root, width=25)
-entry.pack(pady=5)
-
-# Create a button
-button = tk.Button(root, text="Greet Me", command=on_button_click)
-button.pack(pady=10)
-
-# Start the Tkinter event loop
-root.mainloop()
-
 
 if __name__=='__main__':
 
@@ -88,8 +43,10 @@ if __name__=='__main__':
     while test_more_boards_o7:
     #starts storing data for next board
         test_output = {
-            "board_id": "NA", #warm
-            "calibrated_voltage": -1,
+            "board_id": "NA",
+            "testing_cycle": "NA",
+
+            "calibrated_voltage": -1,#warm
             "initial_voltage": -1,
             "initial_current": -1,
             "initial_start_up": "NULL",
@@ -145,9 +102,13 @@ if __name__=='__main__':
         input(Fore.MAGENTA + "Confirm that all power supply channels are OFF by pressing ENTER")
 
         if first == True:
+            print(Fore.MAGENTA + "Test Cycle:", Fore.WHITE + "{testing_cycle}")
+            CorT = input(Fore.MAGENTA + "Is this correct? (y/n) ").lower() == "y"
+            if CorT != "y":
+                sys.exit("Please alter config parameters to match appropriate testing cycle.")
             first = False
         else:
-            input(Fore.MAGENTA + "Replace current board with next, press ENTER to continue")
+            input(Fore.MAGENTA + "Place board in test stand, press ENTER to continue")
 
         #this chunk takes a board id and checks to see if db already has warm data, which we will skip if there
         test_output["board_id"] = input(Fore.MAGENTA + "Board ID: ")
@@ -207,7 +168,7 @@ if __name__=='__main__':
                     print("WARM OPERATIONAL RANGE: ", Fore.RED + "FAIL")
 
         #save data for warm testing
-            insert_warm_traces(test_output["board_id"],
+            insert_warm_traces(test_output["board_id"],test_output["testing_cycle"],
                            trace_output)
             insert_test(test_output)
             print(Fore.LIGHTCYAN_EX + "WARM TEST RESULTS EXPORTED")
@@ -289,7 +250,8 @@ if __name__=='__main__':
 
         #log final results for this board
             update_cold_test(test_output)
-            update_cold_traces(test_output["board_id"],trace_output)
+            update_cold_traces(test_output["board_id"],trace_output,
+                               test_output["testing_cycle"])
             print(Fore.LIGHTCYAN_EX + "COLD TEST RESULTS EXPORTED")
             DMM.write("*CLS")
 
