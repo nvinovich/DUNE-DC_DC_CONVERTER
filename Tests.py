@@ -169,6 +169,7 @@ def Nominal_Load_Performance(DMM: Resource, PS: Resource, RELAY,
         print("samples:", n)
     RELAY.write(b"reset\r")
 
+    DMM.write("ROUT:MULT:OPEN (@3)")
     #take back trace data, read all samples to a db eventually.
     PS.write("*RST")
     if n > 0:
@@ -181,10 +182,49 @@ def Nominal_Load_Performance(DMM: Resource, PS: Resource, RELAY,
             for i in range(len(datalist))]
     else:
         #error but no throw for lack of entries
-        test_output["input_voltage_sweep"] = "ERR"
+        test_output["nominal_load_performance"] = "ERR"
+        return False
+    time.sleep(0.5)
+
+    #same thing but monitor current
+    PS.write("INST CH1")
+    PS.write("VOLT " + str(CALIBRATED_VOLTAGE_IN))
+    PS.write("CURR 0.050")
+    PS.write("OUTP ON")
+    time.sleep(0.3)
+    DMM.write('FUNC "VOLT:DC"')
+    DMM.write("ROUT:MULT:CLOS (@2)")
+    DMM.write('TRAC:CLE "defbuffer1"')
+    DMM.write('TRAC:POIN 100')
+    DMM.write('TRIG:LOAD "SimpleLoop",100,0.02') #/100 measurements in 2 sec
+    DMM.write('INIT')
+    time.sleep(0.5)
+
+    RELAY.write(b"relay on\r") #this runs the relay for the 1 ohm resistor channel, if it times
+    #out that may be an issue, but see if it works
+    DMM.query("*OPC?")
+
+    n = int(DMM.query('TRAC:ACT? "defbuffer1"'))
+    if debug:
+        print("samples:", n)
+    RELAY.write(b"reset\r")
+    DMM.write("ROUT:MULT:OPEN (@2)")
+
+    PS.write("*RST")
+    if n > 0:
+        data = DMM.query(f'TRAC:DATA? 1,{n},"defbuffer1",READ')
+        datalist2 = list(data.split(','))
+        if debug:
+            print(datalist2)
+        datalist2 = [
+            round(float(datalist2[i][:datalist2[i].index("E")]) * 10 ** int(datalist2[i][datalist2[i].index("E") + 1:]), 5)
+            for i in range(len(datalist2))]
+    else:
+        # error but no throw for lack of entries
+        test_output["nominal_load_performance"] = "ERR"
         return False
 
-    trace_output["nominal_load_trace"] = [f"{i:e}" for i in datalist]
+    trace_output["nominal_load_voltage_trace"] = [f"{i:e}" for i in datalist]
     if all([dp <= VOLTAGE_RANGE[1] and dp >=VOLTAGE_RANGE[0] for dp in datalist]):
 
         test_output["nominal_load_performance"] = "PASS"
@@ -343,13 +383,13 @@ def Output_Step_Load(DMM: Resource, PS: Resource, RELAY, CALIBRATED_VOLTAGE_IN,
             round(float(datalist[i][:datalist[i].index("E")]) * 10 ** int(datalist[i][datalist[i].index("E") + 1:]), 5)
             for i in range(len(datalist))]
     else:
-        test_output["output_step_voltage"] = "ERR" #error but do not throw if bad output
+        test_output["output_step_load"] = "ERR" #error but do not throw if bad output
         return False
     if debug:
         print("final step voltage ", datalist[-1])
 
-    trace_output["output_step_load_trace"] =  [f"{i:e}" for i in datalist]
-    if all([dp <=COLD_V[1] and dp >=COLD_V[0] for dp in datalist]):
+    trace_output["output_step_load_voltage_trace"] =  [f"{i:e}" for i in datalist]
+    if all([dp <=COLD_V[1] and dp >=COLD_V[0] for dp in datalist][-10:]):
         test_output["output_step_load"] = "PASS"
         return True
     else:
@@ -388,6 +428,7 @@ def Cold_Startup_Test(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V
 
     #oopsforgot to wait for actual recording so we only got 60 ms of trace data
     time.sleep(5)
+    DMM.write("ROUT:MULT:OPEN (@3)")
 
     n = int(DMM.query('TRAC:ACT? "defbuffer1"'))
     if debug:
@@ -407,6 +448,44 @@ def Cold_Startup_Test(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V
 
     #saves data and trace
     trace_output["cold_startup_voltage_trace"] =  [f"{i:e}" for i in datalist]
+
+    #reset time lol
+    PS.write("*RST")
+    time.sleep(2)
+
+    PS.write("INST CH1")
+    PS.write("VOLT " + str(CALIBRATED_VOLTAGE_IN))
+    PS.write("CURR 0.050")
+    # start recording then activate ps
+    #this is basically a repeat of before but for current
+    DMM.write('FUNC "VOLT:DC"')
+    DMM.write("ROUT:MULT:CLOS (@2)")
+    DMM.write('TRAC:CLE "defbuffer1"')
+    DMM.write('TRAC:POIN 100')
+    DMM.write('TRIG:LOAD "SimpleLoop",100,0.05')
+    DMM.write('INIT')
+    time.sleep(0.5)
+    PS.write("OUTP ON")
+
+    time.sleep(5)
+    DMM.write("ROUT:MULT:OPEN (@2)")
+
+    n = int(DMM.query('TRAC:ACT? "defbuffer1"'))
+    if debug:
+        print("samples ", n)
+    if not n > 0:
+        test_output["cold_startup"] = "ERR"
+        return False
+    data = DMM.query(f'TRAC:DATA? 1,{n},"defbuffer1",READ')
+    datalist2 = list(data.split(','))
+    if debug:
+        print(datalist2)
+    datalist2 = [
+        round(float(datalist2[i][:datalist2[i].index("E")]) * 10 ** int(datalist2[i][datalist2[i].index("E") + 1:]),
+              5) for i in range(len(datalist2))]
+
+    # saves data and trace
+    trace_output["cold_startup_current_trace"] = [f"{i:e}" for i in datalist2]
 
     #this just tells us that it passes if it stabilizes by the ending 10 entries
     if all([dp <=COLD_V[1] and dp >=COLD_V[0] for dp in datalist][-10:]):

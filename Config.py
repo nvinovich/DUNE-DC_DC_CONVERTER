@@ -1,6 +1,5 @@
 #====================================================TESTING PARAMS====================================================#
 #These are to be chosen in accordance with the DC_DC Converter Report 2.1
-testing_cycle = "NON_SHIELDED"
 
 #voltage and current parameters
 IDEAL_INCOMING_VOLTAGE = 5.0

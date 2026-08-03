@@ -183,7 +183,6 @@ if __name__=='__main__':
             print(Fore.LIGHTCYAN_EX + "WARM TEST RESULTS EXPORTED")
 
         elif CorW == 'c':        #cold
-            input(Fore.MAGENTA+"Press ENTER to continue")
             if not Utilities.WARM_TEST_EXISTS(str(test_output["board_id"])):
                 #doesnt let you write ahead without the warm tests for benchmark
                 print(Fore.RED + f"No warm tests exist for{test_output['board_id']}")
@@ -222,9 +221,9 @@ if __name__=='__main__':
         #4.3.3
             if  Output_Step_Load(DMM,PS, RELAY, CALIBRATED_VOLTAGE_IN,OUTPUT_VOLTAGE_COLD
                     ,test_output,trace_output,debug):
-                print("OUTPUT STEP VOLTAGE: "+ Fore.GREEN + "PASS")
+                print("OUTPUT LOAD: "+ Fore.GREEN + "PASS")
             else:
-                print("OUTPUT STEP VOLTAGE: "+ Fore.RED + "FAIL")
+                print("OUTPUT LOAD: "+ Fore.RED + "FAIL")
             time.sleep(0.5)
         #4.3.4
             if Input_Voltage_Step(DMM,PS,CALIBRATED_VOLTAGE_IN,OUTPUT_VOLTAGE_COLD,test_output,trace_output,debug):
@@ -235,9 +234,9 @@ if __name__=='__main__':
             time.sleep(0.5)
             if Cold_Startup_Test(DMM,PS,CALIBRATED_VOLTAGE_IN,OUTPUT_VOLTAGE_COLD,test_output,trace_output,
                                  debug,timer_debug):
-                print("INPUT VOLTAGE STEP: ", Fore.GREEN + "PASS")
+                print("COLD START UP: ", Fore.GREEN + "PASS")
             else:
-                print("INPUT VOLTAGE STEP: ", Fore.RED + "FAIL")
+                print("COLD START UP: ", Fore.RED + "FAIL")
 
             if power_cycle_test:
                 if MULTIPLE_POWER_CYCLES:

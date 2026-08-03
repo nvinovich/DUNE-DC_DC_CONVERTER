@@ -105,7 +105,10 @@ def Trace_Getter(board_id, phase, output_path):
 
                     if current is not None:
                         current = json.loads(current)
-                        output["Current"] = current
+
+                        # Only add current if it matches voltage length
+                        if len(current) == len(voltage):
+                            output["Current"] = current
 
                     df = pd.DataFrame(output)
 
@@ -223,7 +226,7 @@ ORDER BY
     )
     if pc_tests_hide:
         debug_remove = [
-
+            "id",
             "phase",
             "voltage_dev_warm",
             "voltage_dev_cold",
