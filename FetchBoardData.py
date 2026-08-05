@@ -4,6 +4,8 @@ from colorama import Fore,init
 import psycopg
 import sys
 import subprocess
+
+from Utilities import convert_scientific_to_float
 from WorkbookCreator import *
 import matplotlib.pyplot as mp
 import numpy as np
@@ -112,11 +114,24 @@ def Trace_Getter(board_id, phase, output_path):
 
                     df = pd.DataFrame(output)
 
+                    df = df.map(convert_scientific_to_float)
+
                     df.to_excel(
                         writer,
                         sheet_name=name[:31],
                         index=False
                     )
+
+   #scientific notation
+                    ws = writer.sheets[name[:31]]
+                    for cell in ws["B"][1:]:
+                        if isinstance(cell.value, (int, float)):
+                            cell.number_format = "0.00000E+00"
+                    if "Current" in output:
+                        for cell in ws["C"][1:]:
+                            if isinstance(cell.value, (int, float)):
+                                cell.number_format = "0.00000E+00"
+
         wb = load_workbook(output_path)
 
         for ws in wb:
@@ -125,7 +140,7 @@ def Trace_Getter(board_id, phase, output_path):
                     len(str(cell.value)) if cell.value else 0
                     for cell in col
                 )
-                ws.column_dimensions[col[0].column_letter].width = max_length + 3
+                ws.column_dimensions[col[0].column_letter].width = max_length + 50
         wb.save(output_path)
         print(Fore.LIGHTCYAN_EX + f"{board_id} TRACE DOWNLOAD COMPLETE")
 
@@ -178,14 +193,14 @@ def Select_Phase():
 
     if not phases:
         raise ValueError("No testing phases found.")
-    print(Fore.MAGENTA + "\nAvailable Testing Phases")
+    print("\nAvailable Testing Phases")
 
     for i, phase in enumerate(phases, start=1):
         print(f"{i}) {phase}")
 
     while True:
         try:
-            choice = int(input(Fore.MAGENTA + "\nSelect phase (by number): "))
+            choice = int(input(Fore.MAGENTA + "Select phase (by number): "))
 
             if 1 <= choice <= len(phases):
                 return phases[choice - 1]
@@ -224,6 +239,10 @@ ORDER BY
         rows,
         columns=columns
     )
+
+    #timestamp reformatting
+    df["timestamp"] = pd.to_datetime(df["timestamp"]).dt.strftime("%Y-%m-%d %H:%M")
+
     if pc_tests_hide:
         debug_remove = [
             "id",
@@ -430,7 +449,7 @@ if __name__ == "__main__":
                           xrs=[48.0, 50.0], temp="(Cold)")
 
     elif TRCHOICE =="0":
-        phasename = input("Input phase name   ")
+        phasename = input("Input new phase name   ")
         add_phase(phasename)
 
     else:

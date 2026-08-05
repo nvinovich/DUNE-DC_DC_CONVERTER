@@ -255,7 +255,7 @@ def insert_warm_traces(board_id,phase,data):
 def update_cold_traces(board_id,phase,data
 ):
     #sorry for ultra strange db formatting throughout this, but shame on you for prying :[
-    """Updates cold test traces for board trace schema version 2.0."""
+    """updates cold test traces for board trace schema version 2.0."""
     with get_connection() as conn:
         with conn.cursor() as cursor:
             cursor.execute("""

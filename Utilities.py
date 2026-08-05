@@ -19,6 +19,19 @@ def DUNE_ASCII():
     Fore.MAGENTA +"██████▀  ▀██████▀ ███    ███ ▀███████\n",
     Fore.MAGENTA +"DEEP UNDERGROUND NEUTRINO EXPERIMENT")
 
+def Q_TIMER(t,t_debug,snd):
+    '''timer, a very silly one at that'''
+    if t_debug:
+        time.sleep(t/100)
+    else:
+        for i in range(int(t/100)):
+            print(str(t-i*t) + " seconds remaining...")
+            time.sleep(100)
+    if snd:
+        winsound.Beep(560, 1200)
+        time.sleep(0.5)
+        winsound.Beep(560, 1200)
+
 def RESOURCE_CONNECTOR(RM)->(Resource,Resource):
     '''CONNECTS DMM THEN PS'''
     resources = RM.list_resources()
@@ -201,3 +214,13 @@ def AUTOCALIBRATE_TO_IDEAL_INCOMING_VOLTAGE(  DMM: Resource, PS: Resource, IDEAL
     DMM.write("*RST")
 
     return CALIBRATED_VOLTAGE_IN, incoming_volts
+
+def convert_scientific_to_float(value):
+
+    if isinstance(value, str):
+        try:
+            return float(value)
+        except ValueError:
+            return value
+
+    return value

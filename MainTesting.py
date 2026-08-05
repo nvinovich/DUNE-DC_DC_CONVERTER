@@ -1,7 +1,11 @@
+from idlelib import window
+
+import winsound
 from colorama import init, Fore, Back, Style
 from psycopg.errors import UniqueViolation
 
 from FetchBoardData import Select_Phase
+from Utilities import Q_TIMER
 
 init(autoreset=True)
 import Utilities
@@ -11,17 +15,18 @@ from tkinter import *
 from tkinter import ttk
 from Config import *
 
-#init dbs if not already
-init_db()
-init_phase_table()
-init_trace_db()
-
 Utilities.DUNE_ASCII()
 
 if __name__=='__main__':
 
     #Check for good multimeter and power supply connections
     print(Fore.CYAN + "COMPREHENSIVE DCDC CONVERTER TESTING CYCLE")
+
+    # init dbs if not already
+    print("Connecting to database...")
+    init_db()
+    init_phase_table()
+    init_trace_db()
 
     print("Checking for resources...")
     RELAY = Utilities.SERIAL_CONNECTOR()
@@ -195,13 +200,10 @@ if __name__=='__main__':
             PS.write("CURR 0.05")
             PS.write("OUTP ON")
             input(Fore.MAGENTA + "Submerge board in liquid argon for 300 seconds, press ENTER to start timer")
-            print("Timer begun for 300 seconds...")
-            if timer_debug:
-                time.sleep(3)
-            else:
-                time.sleep(300)
+            #timing function
+            Q_TIMER(300,timer_debug,snd)
+
             input(Fore.MAGENTA +"Timer end, press ENTER to continue")
-            print()
 
         #secondary calibration for cold testing
 
