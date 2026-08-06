@@ -308,12 +308,17 @@ def Input_Voltage_Step(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN: float
     DMM.write("ROUT:MULT:CLOS (@3)")
     DMM.write('TRAC:CLE "defbuffer1"')
     DMM.write('TRAC:POIN 100')
-    DMM.write('TRIG:LOAD "SimpleLoop",100,0.02')
+    DMM.write('TRIG:LOAD "SimpleLoop",100,0.005')
     #go ahead and take 100 measurements in 2 sec
     DMM.write('INIT')
     time.sleep(0.5)
 
     PS.write("VOLT " +str(CALIBRATED_VOLTAGE_IN +.1))
+    PS.query("*OPC?")
+    time.sleep(1)
+    #^^^for step timing:
+    #1 sec gives 200 ms, 0.7 gives 100 ms
+    PS.write("VOLT " +str(CALIBRATED_VOLTAGE_IN ))
 
     #let me know when done, will throw all sorts of errors if something in the setup isnt perfect
     DMM.query('*OPC?')
@@ -346,15 +351,18 @@ def Input_Voltage_Step(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN: float
     DMM.query("*OPC?")
 
     DMM.write('FUNC "VOLT:DC"')
-    DMM.write("ROUT:MULT:CLOS (@2)")
+    DMM.write("ROUT:MULT:CLOS (@1)")
     DMM.write('TRAC:CLE "defbuffer1"')
     DMM.write('TRAC:POIN 100')
-    DMM.write('TRIG:LOAD "SimpleLoop",100,0.02')
+    DMM.write('TRIG:LOAD "SimpleLoop",100,0.005')
     DMM.write('INIT')
-    time.sleep(0.5)
+    time.sleep(.5)
 
     #after the delay, bumps up again
     PS.write("VOLT " +str(CALIBRATED_VOLTAGE_IN +.1))
+    PS.query("*OPC?")
+    time.sleep(1)
+    PS.write("VOLT " +str(CALIBRATED_VOLTAGE_IN))
 
     DMM.query('*OPC?')
 
@@ -362,7 +370,7 @@ def Input_Voltage_Step(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN: float
     if debug:
         print("samples:", n)
 
-    DMM.write("ROUT:MULT:OPEN (@2)")
+    DMM.write("ROUT:MULT:OPEN (@1)")
 
     if n > 0:
         data = DMM.query(f'TRAC:DATA? 1,{n},"defbuffer1",READ')

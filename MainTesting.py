@@ -190,6 +190,7 @@ if __name__=='__main__':
             if not Utilities.WARM_TEST_EXISTS(str(test_output["board_id"]),str(test_output["phase"])):
                 #doesnt let you write ahead without the warm tests for benchmark
                 print(Fore.RED + f"No warm tests exist for{test_output['board_id']}")
+                continue
 
             #this should keep the power at an expected level during quenching
             PS.write("*RST")
