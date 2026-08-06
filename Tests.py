@@ -6,7 +6,6 @@ import pyvisa
 import winsound
 from colorama import init, Fore, Back, Style
 from numpy.ma.extras import average
-from pandas.core.config_init import pc_max_cols_doc
 
 from Config import snd
 from Utilities import Q_TIMER
@@ -58,8 +57,8 @@ def Initial_Start_Up_Test( DMM: Resource, PS: Resource,
         print(test_result2)
 
     #append to df
-    test_output["initial_voltage"] = f"{test_result:e}"
-    test_output["initial_current"] = f"{test_result2:e}"
+    test_output["initial_voltage"] = test_result
+    test_output["initial_current"] = test_result2
     if (test_result <= INITIAL_START_UP_VOLTAGE[1] and test_result >= INITIAL_START_UP_VOLTAGE[0]
             and test_result2 >= INITIAL_START_UP_CURRENT[1] and test_result2 <= INITIAL_START_UP_CURRENT[0]):
         test_output["initial_start_up"] = "PASS"
@@ -222,14 +221,18 @@ def Nominal_Load_Performance(DMM: Resource, PS: Resource, RELAY,
         if debug:
             print(datalist2)
         datalist2 = [
-            round(float(datalist2[i][:datalist2[i].index("E")]) * 10 ** int(datalist2[i][datalist2[i].index("E") + 1:]), 5)
+            round(float(datalist2[i][:datalist2[i].index("E")]) * 10 **
+                  int(datalist2[i][datalist2[i].index("E") + 1:]), 5)
             for i in range(len(datalist2))]
     else:
         # error but no throw for lack of entries
         test_output["nominal_load_performance"] = "ERR"
         return False
 
+    #then save these outputs
     trace_output["nominal_load_voltage_trace"] = datalist
+    trace_output["nominal_load_current_trace"] = datalist2
+
     if all([dp <= VOLTAGE_RANGE[1] and dp >=VOLTAGE_RANGE[0] for dp in datalist]):
 
         test_output["nominal_load_performance"] = "PASS"
@@ -274,8 +277,8 @@ def Input_and_Ouput_Cold( DMM: Resource, PS: Resource,CALIBRATED_VOLTAGE_IN:floa
         print(test_result2)
 
     #append to df
-    test_output["initial_cold_voltage"] = f"{test_result:e}"
-    test_output["initial_cold_current"] = f"{test_result2:e}"
+    test_output["initial_cold_voltage"] = test_result
+    test_output["initial_cold_current"] = test_result2
     if (test_result <= COLD_V[1] and test_result >= COLD_V[0]
             and test_result2 <= COLD_C[1] and test_result2 >= COLD_C[0]):
         test_output["input_current_output_voltage"] = "PASS"
@@ -286,7 +289,7 @@ def Input_and_Ouput_Cold( DMM: Resource, PS: Resource,CALIBRATED_VOLTAGE_IN:floa
 def Input_Voltage_Step(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN: float,
                        VOLTAGE_RANGE, test_output,
                        trace_output, debug:bool) ->bool:
-    '''4.3.4'''
+    '''(4.3.4)'''
 
     DMM.write("*RST")
     PS.write("*RST")
@@ -331,8 +334,46 @@ def Input_Voltage_Step(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN: float
     if debug:
         print("final debug voltage for step voltage test ", datalist[-1])
 
+    #now we do the same thing but for current :/
+    PS.write("VOLT " + str(CALIBRATED_VOLTAGE_IN))
+    time.sleep(1)
+    DMM.write("ROUT:MULT:OPEN (@3)")
+    PS.query("*OPC?")
+    DMM.query("*OPC?")
+
+    DMM.write('FUNC "VOLT:DC"')
+    DMM.write("ROUT:MULT:CLOS (@2)")
+    DMM.write('TRAC:CLE "defbuffer1"')
+    DMM.write('TRAC:POIN 100')
+    DMM.write('TRIG:LOAD "SimpleLoop",100,0.02')
+    DMM.write('INIT')
+    time.sleep(0.5)
+
+    #after the delay, bumps up again
+    PS.write("VOLT " +str(CALIBRATED_VOLTAGE_IN +.1))
+
+    DMM.query('*OPC?')
+
+    n = int(DMM.query('TRAC:ACT? "defbuffer1"'))
+    if debug:
+        print("samples:", n)
+
+    DMM.write("ROUT:MULT:OPEN (@2)")
+
+    if n > 0:
+        data = DMM.query(f'TRAC:DATA? 1,{n},"defbuffer1",READ')
+        datalist2 = list(data.split(','))
+        if debug:
+            print(datalist2)
+        #mangled scipi formatting, had to do it manually
+        datalist2 = [round(float(datalist2[i][:datalist2[i].index("E")])*10**
+                           int(datalist2[i][datalist2[i].index("E")+1:]),5)
+                    for i in range(len(datalist2))]
+
     #puts datalist as trace
     trace_output["input_step_voltage_voltage_trace"] =  datalist
+    trace_output["input_step_voltage_current_trace"] = datalist2
+
     if all([dp <= VOLTAGE_RANGE[1] and dp >=VOLTAGE_RANGE[0] for dp in datalist]):
         #this is just seeign if none jump out of allowed range
         test_output["input_step_voltage"] = "PASS"
@@ -358,14 +399,12 @@ def Output_Step_Load(DMM: Resource, PS: Resource, RELAY, CALIBRATED_VOLTAGE_IN,
     #this takes 100 measurements in 2 sec, just as above
     #if all fall within stable range within the time they are good.
     DMM.write('FUNC "VOLT:DC"')
-    DMM.write("ROUT:MULT:CLOS (@3)")
     DMM.write('TRAC:CLE "defbuffer1"')
     DMM.write('TRAC:POIN 100')
     DMM.write('TRIG:LOAD "SimpleLoop",100,0.02')
 
     DMM.write('INIT')
     time.sleep(0.5)
-    # just an option ot use the power supply dual channel instead of relay
     RELAY.write(b"relay on 000\r")
 
     #let me know when done
@@ -393,7 +432,42 @@ def Output_Step_Load(DMM: Resource, PS: Resource, RELAY, CALIBRATED_VOLTAGE_IN,
     if debug:
         print("final step voltage ", datalist[-1])
 
+    #now we reset and do similar steps to get a current reading.
+    DMM.write("*RST")
+    time.sleep(0.5)
+    DMM.write("ROUT:MULT:CLOS (@3)")
+    DMM.write("ROUT:MULT:CLOS (@2)")
+    DMM.query("*OPC?")
+
+    DMM.write('FUNC "VOLT:DC"')
+    DMM.write('TRAC:CLE "defbuffer1"')
+    DMM.write('TRAC:POIN 100')
+    DMM.write('TRIG:LOAD "SimpleLoop",100,0.02')
+
+    DMM.write('INIT')
+    time.sleep(0.5)
+    RELAY.write(b"relay on 000\r")
+
+    #let me know when done
+    DMM.query('*OPC?')
+    n = int(DMM.query('TRAC:ACT? "defbuffer1"'))
+    if debug:
+        print("samples (current) :", n)
+    if n > 0:
+        data = DMM.query(f'TRAC:DATA? 1,{n},"defbuffer1",READ')
+        datalist2 = list(data.split(','))
+        if debug:
+            print(datalist2)
+        datalist2 = [
+            round(float(datalist2[i][:datalist2[i].index("E")]) * 10 **
+                  int(datalist2[i][datalist2[i].index("E") + 1:]), 5)
+            for i in range(len(datalist2))]
+        if debug:
+            print("final step voltage (current) ", datalist2[-1])
+
     trace_output["output_step_load_voltage_trace"] = datalist
+    trace_output["output_step_load_current_trace"] = datalist2
+
     if all([dp <=COLD_V[1] and dp >=COLD_V[0] for dp in datalist][-10:]):
         test_output["output_step_load"] = "PASS"
         return True
@@ -567,17 +641,17 @@ def SINGLE_POWER_CYCLE_TEST(PS: Resource, DMM: Resource, which,
 
     # this selects which data sheet to update
     if which == "w":
-        test_output["mc_ave_vol"] = f"{avg_voltage:e}"
-        test_output["mc_ave_cur"] = f"{ave_current:e}"
+        test_output["mc_ave_vol"] = avg_voltage
+        test_output["mc_ave_cur"] = ave_current
         trace_output["multiple_power_cycle_voltage"] = pc_vols
         trace_output["multiple_power_cycle_current"] = pc_cur
-        test_output["voltage_dev_warm"] = f"{std_voltage:e}"
+        test_output["voltage_dev_warm"] = std_voltage
     elif which == "c":
-        test_output["mc_ave_vol_c"] = f"{avg_voltage:e}"
-        test_output["mc_ave_cur_c"] = f"{ave_current:e}"
+        test_output["mc_ave_vol_c"] = avg_voltage
+        test_output["mc_ave_cur_c"] = ave_current
         trace_output["multiple_power_cycle_voltage_c"] = pc_vols
         trace_output["multiple_power_cycle_current_c"] = pc_cur
-        test_output["voltage_dev_cold"] = f"{std_voltage:e}"
+        test_output["voltage_dev_cold"] = std_voltage
 
 def POWER_CYCLE_TEST(PS,DMM,which,
                      CALIBRATED_VOLTAGE_IN: bool, test_output,trace_output):
@@ -646,15 +720,14 @@ def POWER_CYCLE_TEST(PS,DMM,which,
 
     #this selects which data sheet to update
     if which == "w":
-        test_output["mc_ave_vol"] = f"{avg_voltage:e}"
-        test_output["mc_ave_cur"] = f"{ave_current:e}"
+        test_output["mc_ave_vol"] = avg_voltage
+        test_output["mc_ave_cur"] = ave_current
         trace_output["multiple_power_cycle_voltage"] = pc_vols
         trace_output["multiple_power_cycle_current"] = pc_cur
-        test_output["voltage_dev_warm"] = f"{std_voltage:e}"
+        test_output["voltage_dev_warm"] = std_voltage
     elif which == "c":
-        test_output["mc_ave_vol_c"] = f"{avg_voltage:e}"
-        test_output["mc_ave_cur_c"] = f"{ave_current:e}"
+        test_output["mc_ave_vol_c"] = avg_voltage
+        test_output["mc_ave_cur_c"] = ave_current
         trace_output["multiple_power_cycle_voltage_c"] =  pc_vols
         trace_output["multiple_power_cycle_current_c"] = pc_cur
-        test_output["voltage_dev_cold"] = f"{std_voltage:e}"
-        #added in sci not.
+        test_output["voltage_dev_cold"] = std_voltage

@@ -20,7 +20,7 @@ def DUNE_ASCII():
     Fore.MAGENTA +"DEEP UNDERGROUND NEUTRINO EXPERIMENT")
 
 def Q_TIMER(t,t_debug,snd):
-    '''timer, a very silly one at that'''
+    '''timer, a very silly one at that. makes a little beep when done'''
     if t_debug:
         time.sleep(t/100)
     else:
@@ -75,7 +75,7 @@ def RESOURCE_CONNECTOR(RM)->(Resource,Resource):
 
     return DMM, PS
 
-def WARM_TEST_EXISTS(board_id: str) ->bool:
+def WARM_TEST_EXISTS(board_id: str,phase: str) ->bool:
     #helps to skip warm testing if already done
     #had to update for new db formatting as well
     with get_connection() as conn:
@@ -88,9 +88,10 @@ def WARM_TEST_EXISTS(board_id: str) ->bool:
                     nominal_load_performance
                 FROM dc_dc_tests
                 WHERE board_id = %s
+                AND phase = %s
                 ORDER BY id DESC
                 LIMIT 1
-            """, (board_id,))
+            """, (board_id,phase,))
 
             row = cursor.fetchone()
 
@@ -216,7 +217,7 @@ def AUTOCALIBRATE_TO_IDEAL_INCOMING_VOLTAGE(  DMM: Resource, PS: Resource, IDEAL
     return CALIBRATED_VOLTAGE_IN, incoming_volts
 
 def convert_scientific_to_float(value):
-
+    '''just a stupid little utility to convert types when needed in parsing'''
     if isinstance(value, str):
         try:
             return float(value)
@@ -224,3 +225,36 @@ def convert_scientific_to_float(value):
             return value
 
     return value
+
+def SELECT_PHASE():
+    """
+    Displays all allowed testing phases and returns the one selected by the user.
+    """
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT phase
+                FROM test_phases
+                ORDER BY phase
+            """)
+
+            phases = [row[0] for row in cursor.fetchall()]
+
+    if not phases:
+        raise ValueError("No testing phases found.")
+    print(Fore.MAGENTA + "\nAvailable Testing Phases")
+
+    for i, phase in enumerate(phases, start=1):
+        print(f"{i}) {phase}")
+
+    while True:
+        try:
+            choice = int(input(Fore.MAGENTA + "Select phase (by number): "))
+
+            if 1 <= choice <= len(phases):
+                return phases[choice - 1]
+
+            print("Invalid selection.")
+
+        except ValueError:
+            print("Enter a number.")
