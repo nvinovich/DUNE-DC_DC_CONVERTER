@@ -108,9 +108,13 @@ def Trace_Getter(board_id, phase, output_path):
                     if current is not None:
                         current = json.loads(current)
 
-                        # Only add current if it matches voltage length
+                        #add current if it matches voltage length
                         if len(current) == len(voltage):
-                            output["Current"] = current
+                            if name == "Input Voltage Step (5 to 5.1)":
+                                #for this column we care about different results
+                                output["Input Voltage"] = current
+                            else:
+                                output["Current"] = current
 
                     df = pd.DataFrame(output)
 
