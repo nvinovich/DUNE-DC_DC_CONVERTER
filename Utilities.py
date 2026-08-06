@@ -22,7 +22,8 @@ def DUNE_ASCII():
 def Q_TIMER(t,t_debug,snd):
     '''timer, a very silly one at that. makes a little beep when done'''
     if t_debug:
-        time.sleep(t/100)
+        time.sleep(0.5)
+        return
     else:
         for i in range(int(t/100)):
             print(str(t-i*t) + " seconds remaining...")

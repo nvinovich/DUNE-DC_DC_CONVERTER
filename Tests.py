@@ -177,6 +177,7 @@ def Nominal_Load_Performance(DMM: Resource, PS: Resource, RELAY,
     DMM.write("ROUT:MULT:OPEN (@3)")
     #take back trace data, read all samples to a db eventually.
     PS.write("*RST")
+
     if n > 0:
         data = DMM.query(f'TRAC:DATA? 1,{n},"defbuffer1",READ')
         datalist = list(data.split(','))
@@ -196,6 +197,7 @@ def Nominal_Load_Performance(DMM: Resource, PS: Resource, RELAY,
     PS.write("VOLT " + str(CALIBRATED_VOLTAGE_IN))
     PS.write("CURR 0.050")
     PS.write("OUTP ON")
+    DMM.write("*RST")
     time.sleep(0.3)
     DMM.write('FUNC "VOLT:DC"')
     DMM.write("ROUT:MULT:CLOS (@2)")
@@ -337,6 +339,7 @@ def Input_Voltage_Step(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN: float
 
     #now we do the same thing but for current :/
     PS.write("VOLT " + str(CALIBRATED_VOLTAGE_IN))
+    DMM.write("*RST")
     time.sleep(1)
     DMM.write("ROUT:MULT:OPEN (@3)")
     PS.query("*OPC?")
@@ -416,8 +419,6 @@ def Output_Step_Load(DMM: Resource, PS: Resource, RELAY, CALIBRATED_VOLTAGE_IN,
         print("samples:", n)
     RELAY.write(b"reset\r")
 
-    PS.write("*RST")
-
     if n > 0:
         data = DMM.query(f'TRAC:DATA? 1,{n},"defbuffer1",READ')
         datalist = list(data.split(','))
@@ -436,7 +437,7 @@ def Output_Step_Load(DMM: Resource, PS: Resource, RELAY, CALIBRATED_VOLTAGE_IN,
     #now we reset and do similar steps to get a current reading.
     DMM.write("*RST")
     time.sleep(0.5)
-    DMM.write("ROUT:MULT:CLOS (@3)")
+    DMM.write("ROUT:MULT:OPEN (@3)")
     DMM.write("ROUT:MULT:CLOS (@2)")
     DMM.query("*OPC?")
 
@@ -463,11 +464,11 @@ def Output_Step_Load(DMM: Resource, PS: Resource, RELAY, CALIBRATED_VOLTAGE_IN,
             round(float(datalist2[i][:datalist2[i].index("E")]) * 10 **
                   int(datalist2[i][datalist2[i].index("E") + 1:]), 5)
             for i in range(len(datalist2))]
+        trace_output["output_step_load_current_trace"] = datalist2
         if debug:
             print("final step voltage (current) ", datalist2[-1])
 
     trace_output["output_step_load_voltage_trace"] = datalist
-    trace_output["output_step_load_current_trace"] = datalist2
 
     if all([dp <=COLD_V[1] and dp >=COLD_V[0] for dp in datalist][-10:]):
         test_output["output_step_load"] = "PASS"
@@ -506,7 +507,7 @@ def Cold_Startup_Test(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V
 
     #oopsforgot to wait for actual recording so we only got 60 ms of trace data
     time.sleep(5)
-    DMM.query('OPC?')
+    DMM.query('*OPC?')
 
     n = int(DMM.query('TRAC:ACT? "defbuffer1"'))
     if debug:
@@ -530,6 +531,7 @@ def Cold_Startup_Test(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V
 
     #reset time lol
     PS.write("*RST")
+    DMM.write("*RST")
     time.sleep(2)
 
     PS.write("INST CH1")
