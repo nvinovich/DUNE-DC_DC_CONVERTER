@@ -4,7 +4,6 @@ import winsound
 from colorama import init, Fore, Back, Style
 from psycopg.errors import UniqueViolation
 
-from FetchBoardData import Select_Phase
 from Utilities import Q_TIMER
 
 init(autoreset=True)
@@ -50,7 +49,7 @@ if __name__=='__main__':
     test_more_boards_o7 = True
 
     #ask for phase and admin name
-    phase = Select_Phase()
+    phase = Utilities.SELECT_PHASE()
     admin = input(Fore.MAGENTA + "Tests administered by: " )
     print()
 
@@ -188,7 +187,7 @@ if __name__=='__main__':
             print(Fore.LIGHTCYAN_EX + "WARM TEST RESULTS EXPORTED")
 
         elif CorW == 'c':        #cold
-            if not Utilities.WARM_TEST_EXISTS(str(test_output["board_id"])):
+            if not Utilities.WARM_TEST_EXISTS(str(test_output["board_id"]),str(test_output["phase"])):
                 #doesnt let you write ahead without the warm tests for benchmark
                 print(Fore.RED + f"No warm tests exist for{test_output['board_id']}")
 
@@ -223,9 +222,9 @@ if __name__=='__main__':
         #4.3.3
             if  Output_Step_Load(DMM,PS, RELAY, CALIBRATED_VOLTAGE_IN,OUTPUT_VOLTAGE_COLD
                     ,test_output,trace_output,debug):
-                print("OUTPUT LOAD: "+ Fore.GREEN + "PASS")
+                print("NOMINAL LOAD COLD: "+ Fore.GREEN + "PASS")
             else:
-                print("OUTPUT LOAD: "+ Fore.RED + "FAIL")
+                print("NOMINAL LOAD COLD: "+ Fore.RED + "FAIL")
             time.sleep(0.5)
         #4.3.4
             if Input_Voltage_Step(DMM,PS,CALIBRATED_VOLTAGE_IN,OUTPUT_VOLTAGE_COLD,test_output,trace_output,debug):

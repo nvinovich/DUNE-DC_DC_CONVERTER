@@ -5,6 +5,9 @@ import psycopg
 import sys
 import subprocess
 
+import GraphicalOutputs
+import Utilities
+from Config import pc_tests_hide
 from Utilities import convert_scientific_to_float
 from WorkbookCreator import *
 import matplotlib.pyplot as mp
@@ -19,8 +22,6 @@ DB_INFO = {
     "password": "password",
     "port": 5432
 }
-def get_connection():
-    return psycopg.connect(**DB_INFO)
 
 #Run this file to update data in your local spreadsheet, but replace the following parameter with system desktop path or
 #other desired download destination:
@@ -28,7 +29,6 @@ DD = rf"C:\Users\StudentAdmin\Desktop"
 XLSX_NAME= "TESTS"
 
 #clutter hiding options
-pc_tests_hide = True
 if pc_tests_hide:
     hide_sheets = ["Multiple Power Cycle Cold","Multiple Power Cycle Warm"]
 else:
@@ -60,7 +60,7 @@ def Trace_Getter(board_id, phase, output_path):
                 "input_voltage_sweep_voltage_trace",
                 "input_voltage_sweep_current_trace"
             ),
-            "Nominal Load": (
+            "Nominal Load Warm": (
                 "nominal_load_voltage_trace",
                 "nominal_load_current_trace"
             ),
@@ -72,11 +72,11 @@ def Trace_Getter(board_id, phase, output_path):
                 "multiple_power_cycle_voltage_c",
                 "multiple_power_cycle_current_c"
             ),
-            "Input Step Voltage": (
+            "Input Voltage Step (5 to 5.1)": (
                 "input_step_voltage_voltage_trace",
                 "input_step_voltage_current_trace"
             ),
-            "Output Step Load": (
+            "Nominal Load Cold": (
                 "output_step_load_voltage_trace",
                 "output_step_load_current_trace"
             ),
@@ -140,7 +140,7 @@ def Trace_Getter(board_id, phase, output_path):
                     len(str(cell.value)) if cell.value else 0
                     for cell in col
                 )
-                ws.column_dimensions[col[0].column_letter].width = max_length + 50
+                ws.column_dimensions[col[0].column_letter].width = max_length + 5
         wb.save(output_path)
         print(Fore.LIGHTCYAN_EX + f"{board_id} TRACE DOWNLOAD COMPLETE")
 
@@ -176,39 +176,6 @@ def Export_All_Traces(output_folder, phase):
         Trace_Getter(board_id, phase,output_path)
 
     print(Fore.GREEN + "ALL TRACE DOWNLOADS COMPLETE")
-
-def Select_Phase():
-    """
-    Displays all allowed testing phases and returns the one selected by the user.
-    """
-    with get_connection() as conn:
-        with conn.cursor() as cursor:
-            cursor.execute("""
-                SELECT phase
-                FROM test_phases
-                ORDER BY phase
-            """)
-
-            phases = [row[0] for row in cursor.fetchall()]
-
-    if not phases:
-        raise ValueError("No testing phases found.")
-    print("\nAvailable Testing Phases")
-
-    for i, phase in enumerate(phases, start=1):
-        print(f"{i}) {phase}")
-
-    while True:
-        try:
-            choice = int(input(Fore.MAGENTA + "Select phase (by number): "))
-
-            if 1 <= choice <= len(phases):
-                return phases[choice - 1]
-
-            print("Invalid selection.")
-
-        except ValueError:
-            print("Enter a number.")
 
 def Test_Results_Getter(DD, XLSX_NAME,phase) -> None:
     '''Writes out the test data for full database onto one xlsx file'''
@@ -285,6 +252,7 @@ ORDER BY
         "mc_ave_vol_c": "COLD POWERCYCLE AVE VOLTAGE",
         "mc_ave_cur_c": "COLD POWERCYCLE AVE CURRENT",
     })
+    df = df.map(convert_scientific_to_float) #convert my prior messy data back
     df.to_excel(output_file, index=False)
     wb = load_workbook(output_file)
     ws = wb.active
@@ -295,23 +263,29 @@ ORDER BY
         fill_type="solid",
         fgColor="C6EFCE"  # light green
     )
+    #sci notation converter
+    skip_headers = {
+        "BOARD ID",
+        "CALIBRATED INPUT VOLTAGE (WARM)",
+        "CALIBRATED INPUT VOLTAGE (COLD)"
+    }
+
+    for col in ws.iter_cols():
+        header = col[0].value
+
+        if header in skip_headers:
+            continue
+
+        for cell in col[1:]:  # Skip header row
+            if isinstance(cell.value, (int, float)):
+                cell.number_format = "0.00000E+00"
 
     for cell in ws[1]:
         cell.fill = header_fill
         cell.font = Font(bold=True)
-        cell.alignment = Alignment(
-            horizontal="center",
-            vertical="center"
-        )
-    grey_fill = PatternFill(
-            fill_type="solid",
-            fgColor="E7E6E6"
-        )
-
-    white_fill = PatternFill(
-            fill_type="solid",
-            fgColor="FFFFFF"
-        )
+        cell.alignment = Alignment(horizontal="center", vertical="center" )
+    grey_fill = PatternFill(fill_type="solid",fgColor="EBEAEA")
+    white_fill = PatternFill(fill_type="solid",fgColor="FFFFFF")
 
     for row in range(2, ws.max_row + 1):
 
@@ -335,59 +309,6 @@ ORDER BY
 
     wb.save(output_file)
 
-def Voltage_Histogram(board_id,phase,xrs,temp="(Warm)",
-                      trace_column="multiple_power_cycle_voltage",
-                      output_folder=r"C:\Users\StudentAdmin\Desktop"):
-    with get_connection() as conn:
-        with conn.cursor() as cursor:
-
-            cursor.execute(f"""
-                SELECT {trace_column}
-                FROM board_traces
-                WHERE board_id = %s
-            """, (board_id,))
-
-            row = cursor.fetchone()
-
-    if row is None:
-        print(f"No data found for board {board_id}")
-        return
-
-    if row[0] is None:
-        print(f"{trace_column} is empty for board {board_id}")
-        return
-
-    pc_vols = json.loads(row[0])
-
-    avg_voltage = np.mean(pc_vols)
-    std_voltage = np.std(pc_vols)
-
-    mp.figure(figsize=(8,5))
-
-    mp.hist(
-        pc_vols,
-        bins=50
-    )
-    #added in clearance zone plotting
-    mp.axvspan(xrs[0],xrs[1], alpha=0.35, color="grey", label="Ideal Operating Range")
-
-    mp.legend(
-        title=f"Ave = {avg_voltage:.5f} V\nStDev = {std_voltage:.5f} V"
-    )
-
-    mp.title(f"Voltage Behavior for {board_id}" + temp)
-    mp.xlabel("Voltage (V)")
-    mp.ylabel("Samples at Voltage")
-    mp.grid(True)
-
-    filename = f"{board_id}_{trace_column}.png"
-    save_path = os.path.join(output_folder, filename)
-
-    mp.savefig(save_path, dpi=300, bbox_inches="tight")
-    mp.close()
-
-    print(Fore.GREEN + f"Histogram saved to:\n{save_path}")
-
 if __name__ == "__main__":
     TRCHOICE = input(Fore.MAGENTA + ">Download phase SQL data to PC (1)\n"
                                     ">Download phase SQL data to external drive (2)\n"
@@ -395,7 +316,7 @@ if __name__ == "__main__":
                             "Choose a readback option: ")
 
     if TRCHOICE == "1":
-        phase = Select_Phase()
+        phase = Utilities.SELECT_PHASE()
         folder_path = os.path.join(DD, "DB_IMAGE",phase)
         try:
             os.makedirs(folder_path, exist_ok=True)
@@ -417,7 +338,7 @@ if __name__ == "__main__":
         drive_letter = "D"
         if os.path.exists(f"{drive_letter.upper()}:\\"):
             print(f"{drive_letter.upper()}: DRIVE FOUND")
-            phase = Select_Phase()
+            phase = Utilities.SELECT_PHASE()
 
             folder_path = os.path.join(f"{drive_letter.upper()}:\\", "DB_IMAGE",phase)
 
@@ -441,14 +362,15 @@ if __name__ == "__main__":
     elif TRCHOICE == "3":
         # specific board behavior plotting
         board_id = int(input("Board ID: "))
-        phase = Select_Phase()
+        phase = Utilities.SELECT_PHASE()
         if input("Warm or Cold Stability? (W/c)").lower() == "w":
-            Voltage_Histogram(board_id,phase, [58.0, 61.0])
+            GraphicalOutputs.Voltage_Histogram(board_id, phase, [58.0, 61.0])
             sys.exit()
-        Voltage_Histogram(board_id, phase, trace_column="multiple_power_cycle_voltage_c",
+        GraphicalOutputs.Voltage_Histogram(board_id, phase, trace_column="multiple_power_cycle_voltage_c",
                           xrs=[48.0, 50.0], temp="(Cold)")
 
     elif TRCHOICE =="0":
+        #admin option to add a new phase name
         phasename = input("Input new phase name   ")
         add_phase(phasename)
 
