@@ -1,3 +1,5 @@
+import sys
+
 import psycopg
 import pandas as pd
 from datetime import datetime
@@ -349,12 +351,22 @@ def add_phase(phase_name):
                 FROM test_phases
                 WHERE phase = %s
             """, (phase_name,))
-
+            #if phase name colision, let me rename it
             if cursor.fetchone():
-                raise ValueError(
-                    f"Phase '{phase_name}' already exists."
-                )
+                print(
+                    f"Phase '{phase_name}' already exists.")
+                if input("Rename phase?").lower() =='y':
+                    name2 = input("Input new phase name ")
+                    cursor.execute("""
+                                    UPDATE test_phases
+                                    SET phase = %s
+                                    WHERE phase = %s
+                                """, (name2, phase_name))
 
+                    conn.commit()
+                    sys.exit()
+                else:
+                    sys.exit()
             cursor.execute("""
                 INSERT INTO test_phases (phase)
                 VALUES (%s)
@@ -363,3 +375,30 @@ def add_phase(phase_name):
             conn.commit()
 
     print(f"Added new phase: {phase_name}")
+
+def delete_empty_phases():
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+
+            cursor.execute("""
+                DELETE FROM test_phases tp
+                WHERE tp.phase NOT IN (
+                    SELECT DISTINCT phase
+                    FROM dc_dc_tests
+                )
+                AND tp.phase NOT IN (
+                    SELECT DISTINCT phase
+                    FROM board_traces
+                )
+                RETURNING phase
+            """)
+
+            deleted = [row[0] for row in cursor.fetchall()]
+            conn.commit()
+
+    if deleted:
+        print("Deleted empty phases:")
+        for phase in deleted:
+            print(f"  - {phase}")
+    else:
+        print("No empty phases found.")

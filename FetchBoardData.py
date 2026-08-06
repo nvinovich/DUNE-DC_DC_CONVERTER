@@ -369,10 +369,15 @@ if __name__ == "__main__":
         GraphicalOutputs.Voltage_Histogram(board_id, phase, trace_column="multiple_power_cycle_voltage_c",
                           xrs=[48.0, 50.0], temp="(Cold)")
 
-    elif TRCHOICE =="0":
-        #admin option to add a new phase name
+    elif TRCHOICE =="000":
+        #admin option to add a new phase name (or rename it)
+        ###??? DOESNT WORK YET
         phasename = input("Input new phase name   ")
         add_phase(phasename)
 
+    elif TRCHOICE == "-1":
+        #admin option to delete a phase
+        if input("Delete all empty phases?").lower() == "y":
+            delete_empty_phases()
     else:
         sys.exit("INVALID SELECTION")
