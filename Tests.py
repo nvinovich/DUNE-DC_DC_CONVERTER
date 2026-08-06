@@ -106,6 +106,7 @@ def Input_Voltage_Sweep(DMM: Resource, PS: Resource, INITIAL_START_UP_VOLTAGE: l
     DMM.write('TRAC:POIN 100')
     DMM.write('TRIG:LOAD "SimpleLoop",100,0.03')
     DMM.write('INIT')
+    time.sleep(0.5)
 
     #hopefully this loop helps to regulate
     for i in range(200):
