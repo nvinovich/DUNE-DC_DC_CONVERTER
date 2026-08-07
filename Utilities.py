@@ -5,6 +5,9 @@ import sqlite3
 import serial
 from serial.tools import list_ports
 from colorama import init, Fore, Back, Style
+
+from Config import dtime
+
 init(autoreset=True)
 import pyvisa
 from pyvisa import Resource
@@ -22,7 +25,7 @@ def DUNE_ASCII():
 def Q_TIMER(t,t_debug,snd):
     '''timer, a very silly one at that. makes a little beep when done'''
     if t_debug:
-        time.sleep(0.5)
+        time.sleep(dtime)
         return
     else:
         for i in range(int(t/100)):

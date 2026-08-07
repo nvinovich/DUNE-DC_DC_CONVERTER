@@ -81,10 +81,11 @@ def Input_Voltage_Sweep(DMM: Resource, PS: Resource, INITIAL_START_UP_VOLTAGE: l
     DMM.write('TRAC:POIN 100')
     DMM.write('TRIG:LOAD "SimpleLoop",100,0.03')
     DMM.write('INIT')
+    time.sleep(0.1)
     for i in range(200):
         PS.write("VOLT " + str(voltage))
-        voltage += 0.2/200
-        time.sleep(2/200)
+        voltage += 0.1/200
+        time.sleep(1/200)
 
     sample = []
     DMM.query("*OPC?")
@@ -154,19 +155,20 @@ def Nominal_Load_Performance(DMM: Resource, PS: Resource, RELAY,
     RELAY.write(b"reset\r")
     PS.write("INST CH1")
     PS.write("VOLT " + str(CALIBRATED_VOLTAGE_IN))
-    PS.write("CURR 0.050")
+    PS.write("CURR 0.04")
     PS.write("OUTP ON")
-    time.sleep(0.3)
+    time.sleep(1)
     DMM.write('FUNC "VOLT:DC"')
     DMM.write("ROUT:MULT:CLOS (@3)")
     DMM.write('TRAC:CLE "defbuffer1"')
     DMM.write('TRAC:POIN 100')
     DMM.write('TRIG:LOAD "SimpleLoop",100,0.02') #/100 measurements in 2 sec
     DMM.write('INIT')
-    time.sleep(0.5)
 
-    RELAY.write(b"relay on\r") #this runs the relay for the 1 ohm resistor channel, if it times
-    #out that may be an issue, but see if it works
+    time.sleep(1)
+    RELAY.write(b"relay on 000\r")
+    time.sleep(0.5)
+    RELAY.write(b"relay off 000\r")
     DMM.query("*OPC?")
 
     n = int(DMM.query('TRAC:ACT? "defbuffer1"'))
@@ -175,8 +177,7 @@ def Nominal_Load_Performance(DMM: Resource, PS: Resource, RELAY,
     RELAY.write(b"reset\r")
 
     DMM.write("ROUT:MULT:OPEN (@3)")
-    #take back trace data, read all samples to a db eventually.
-    PS.write("*RST")
+    #take back trace data, read all samples to a db eventuall
 
     if n > 0:
         data = DMM.query(f'TRAC:DATA? 1,{n},"defbuffer1",READ')
@@ -193,10 +194,6 @@ def Nominal_Load_Performance(DMM: Resource, PS: Resource, RELAY,
     time.sleep(0.5)
 
     #same thing but monitor current
-    PS.write("INST CH1")
-    PS.write("VOLT " + str(CALIBRATED_VOLTAGE_IN))
-    PS.write("CURR 0.050")
-    PS.write("OUTP ON")
     DMM.write("*RST")
     time.sleep(0.3)
     DMM.write('FUNC "VOLT:DC"')
@@ -205,10 +202,12 @@ def Nominal_Load_Performance(DMM: Resource, PS: Resource, RELAY,
     DMM.write('TRAC:POIN 100')
     DMM.write('TRIG:LOAD "SimpleLoop",100,0.02') #/100 measurements in 2 sec
     DMM.write('INIT')
-    time.sleep(0.5)
+    time.sleep(1)
 
-    RELAY.write(b"relay on\r") #this runs the relay for the 1 ohm resistor channel, if it times
+    RELAY.write(b"relay on 000\r") #this runs the relay for the 1 ohm resistor channel, if it times
     #out that may be an issue, but see if it works
+    time.sleep(0.5)
+    RELAY.write(b"relay off 000\r")
     DMM.query("*OPC?")
 
     n = int(DMM.query('TRAC:ACT? "defbuffer1"'))
@@ -416,8 +415,10 @@ def Output_Step_Load(DMM: Resource, PS: Resource, RELAY, CALIBRATED_VOLTAGE_IN,
     DMM.write('TRIG:LOAD "SimpleLoop",100,0.02')
 
     DMM.write('INIT')
-    time.sleep(0.5)
+    time.sleep(1)
     RELAY.write(b"relay on 000\r")
+    time.sleep(0.5)
+    RELAY.write(b"relay off 000\r")
 
     #let me know when done
     DMM.query('*OPC?')
@@ -455,8 +456,10 @@ def Output_Step_Load(DMM: Resource, PS: Resource, RELAY, CALIBRATED_VOLTAGE_IN,
     DMM.write('TRIG:LOAD "SimpleLoop",100,0.02')
 
     DMM.write('INIT')
-    time.sleep(0.5)
+    time.sleep(1)
     RELAY.write(b"relay on 000\r")
+    time.sleep(0.5)
+    RELAY.write(b"relay off 000\r")
 
     #let me know when done
     DMM.query('*OPC?')

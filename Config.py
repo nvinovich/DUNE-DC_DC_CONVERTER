@@ -14,5 +14,5 @@ power_cycle_test = False     #turn this off during typical testing
 MULTIPLE_POWER_CYCLES = False
 pc_tests_hide = True #if False, FBD will try and retrieve power cycle statistics
 debug = False #general debug to see more numbers during testing
-timer_debug = True #timer negation for quenching times
+timer_debug, dtime = True, 0.5 #timer negation for quenching times
 snd = True #play timer completion sound

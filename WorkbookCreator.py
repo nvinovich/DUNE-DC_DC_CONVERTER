@@ -402,3 +402,60 @@ def delete_empty_phases():
             print(f"  - {phase}")
     else:
         print("No empty phases found.")
+
+def Delete_Board_Phase_Entry(board_id, phase):
+    """
+    Deletes a board entry for a specific testing phase.
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cursor:
+
+            # Check if entry exists
+            cursor.execute("""
+                SELECT *
+                FROM dc_dc_tests
+                WHERE board_id = %s
+                  AND phase = %s
+            """, (board_id, phase))
+
+            entry = cursor.fetchone()
+
+            if not entry:
+                print(f"No entry found for Board {board_id} in phase '{phase}'")
+                return
+
+            print(f"\nDeleting:")
+            print(f"Board ID: {board_id}")
+            print(f"Phase: {phase}")
+            print(entry)
+
+            confirm = input("\nAre you sure? (y/n): ")
+
+            if confirm.lower() != "y":
+                print("Deletion cancelled.")
+                return
+
+            # Delete traces for this board and phase
+            cursor.execute("""
+                DELETE FROM board_traces
+                WHERE board_id = %s
+                  AND phase = %s
+            """, (board_id, phase))
+
+            trace_count = cursor.rowcount
+
+            # Delete test result for this board and phase
+            cursor.execute("""
+                DELETE FROM dc_dc_tests
+                WHERE board_id = %s
+                  AND phase = %s
+            """, (board_id, phase))
+
+            test_count = cursor.rowcount
+
+            conn.commit()
+
+            print("\nDeletion complete:")
+            print(f"Deleted {test_count} test entry(s)")
+            print(f"Deleted {trace_count} trace entry(s)")

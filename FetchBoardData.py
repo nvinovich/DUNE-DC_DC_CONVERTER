@@ -8,7 +8,7 @@ import subprocess
 import GraphicalOutputs
 import Utilities
 from Config import pc_tests_hide
-from Utilities import convert_scientific_to_float
+from Utilities import convert_scientific_to_float, SELECT_PHASE
 from WorkbookCreator import *
 import matplotlib.pyplot as mp
 import numpy as np
@@ -112,6 +112,8 @@ def Trace_Getter(board_id, phase, output_path):
                         if len(current) == len(voltage):
                             if name == "Input Voltage Step (5 to 5.1)":
                                 #for this column we care about different results
+                                output["Input Voltage"] = current
+                            if name == "Nominal Load Cold":
                                 output["Input Voltage"] = current
                             else:
                                 output["Current"] = current
@@ -379,9 +381,15 @@ if __name__ == "__main__":
         phasename = input("Input new phase name   ")
         add_phase(phasename)
 
-    elif TRCHOICE == "-1":
+    elif TRCHOICE == "-100":
         #admin option to delete a phase
         if input("Delete all empty phases?").lower() == "y":
             delete_empty_phases()
+
+    elif TRCHOICE == "-1":
+        #delete specific board
+        print("board deleter")
+        phase = SELECT_PHASE()
+        Delete_Board_Phase_Entry(input("input board id to delete: "),phase)
     else:
         sys.exit("INVALID SELECTION")
