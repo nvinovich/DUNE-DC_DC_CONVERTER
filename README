@@ -15,6 +15,8 @@ requires both a current and voltage trace is performed twice; planning to patch 
 
 For now, all the tests that need be done are contained in MainTesting.
 
+PS. If the timer sounds annoy you, there is a config option to silence them :)
+
 
 ================================================= PHASE DESCRIPTIONS ===================================================
 

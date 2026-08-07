@@ -7,7 +7,7 @@ import subprocess
 
 import GraphicalOutputs
 import Utilities
-from Config import pc_tests_hide
+from Config import pc_tests_hide, hide_calibration_params
 from Utilities import convert_scientific_to_float, SELECT_PHASE
 from WorkbookCreator import *
 import matplotlib.pyplot as mp
@@ -227,6 +227,8 @@ ORDER BY
             "mc_ave_vol_c",
             "mc_ave_cur_c",
         ]
+        if hide_calibration_params:
+            debug_remove = debug_remove + ["calibrated_voltage","secondary_calibration"]
 
         df = df.drop(columns=debug_remove, errors="ignore")
 

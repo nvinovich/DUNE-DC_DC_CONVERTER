@@ -28,9 +28,13 @@ def Q_TIMER(t,t_debug,snd):
         time.sleep(dtime)
         return
     else:
+        #timere debug
+        sleeptime = t
         for i in range(int(t/100)):
-            print(str(t-i*t) + " seconds remaining...")
-            time.sleep(100)
+            print(str(sleeptime) + " seconds remaining...")
+            time.sleep(10)
+            sleeptime = sleeptime - 100
+
     if snd:
         winsound.Beep(560, 1200)
         time.sleep(0.5)
