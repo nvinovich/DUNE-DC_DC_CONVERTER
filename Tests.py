@@ -84,8 +84,8 @@ def Input_Voltage_Sweep(DMM: Resource, PS: Resource, INITIAL_START_UP_VOLTAGE: l
     time.sleep(0.1)
     for i in range(200):
         PS.write("VOLT " + str(voltage))
-        voltage += 0.1/200
-        time.sleep(1/200)
+        voltage += 0.2/200
+        time.sleep(0.02)
 
     sample = []
     DMM.query("*OPC?")
@@ -589,7 +589,7 @@ def Cold_Startup_Test(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V
     return False
 
 def SINGLE_POWER_CYCLE_TEST(PS: Resource, DMM: Resource, which,
-                            CALIBRATED_VOLTAGE_IN: bool, test_output, trace_output):
+                            CALIBRATED_VOLTAGE_IN: float, test_output, trace_output):
     '''Turns on board, waits for stabilization and then records continuously to 100 samples'''
 
     #initialization of PS and DMM
@@ -597,7 +597,6 @@ def SINGLE_POWER_CYCLE_TEST(PS: Resource, DMM: Resource, which,
     pc_cur = []
     DMM.write("*RST")
     DMM.write("*CLS")
-    PS.write("*RST")
     PS.write("VOLT " + str(CALIBRATED_VOLTAGE_IN))
     PS.write("CURR 0.033")
 
@@ -607,11 +606,11 @@ def SINGLE_POWER_CYCLE_TEST(PS: Resource, DMM: Resource, which,
     DMM.write("ROUT:MULT:CLOS (@3)")
     DMM.write('TRAC:CLE "defbuffer1"')
     DMM.write('TRAC:POIN 100')
-    DMM.write('TRIG:LOAD "SimpleLoop",100,0.05')
-    PS.write("OUTP ON")
+    DMM.write('TRIG:LOAD "SimpleLoop",100,0.03')
     # this delay needed to be long as voltage is somewhat slow to stabilize from off state
     time.sleep(2)
     DMM.write('INIT')
+    time.sleep(1)
 
     DMM.query("*OPC?")
     DMM.write("ROUT:MULT:OPEN (@3)")
@@ -628,15 +627,16 @@ def SINGLE_POWER_CYCLE_TEST(PS: Resource, DMM: Resource, which,
 
     #current measurement
     DMM.write('FUNC "VOLT:DC"')
-    DMM.write("ROUT:MULT:CLOS (@2)")
+    DMM.write("ROUT:MULT:CLOS (@1)")
     DMM.write('TRAC:CLE "defbuffer1"')
     DMM.write('TRAC:POIN 100')
-    DMM.write('TRIG:LOAD "SimpleLoop",100,0.05')
+    DMM.write('TRIG:LOAD "SimpleLoop",100,0.03')
     time.sleep(0.3)
     DMM.write('INIT')
+    time.sleep(1)
 
     DMM.query("*OPC?")
-    DMM.write("ROUT:MULT:OPEN (@2)")
+    DMM.write("ROUT:MULT:OPEN (@1)")
 
     n = int(DMM.query('TRAC:ACT? "defbuffer1"'))
     data = DMM.query(f'TRAC:DATA? 1,{n},"defbuffer1",READ')
@@ -648,7 +648,7 @@ def SINGLE_POWER_CYCLE_TEST(PS: Resource, DMM: Resource, which,
         pc_cur.append(i)
 
     PS.write("OUTP OFF")
-    # Calculate statistics
+    #calculate statistics
     avg_voltage = round(np.mean(pc_vols), 5)
     std_voltage = round(np.std(pc_vols), 5)
     ave_current = round(np.mean(pc_cur), 5)
@@ -668,7 +668,7 @@ def SINGLE_POWER_CYCLE_TEST(PS: Resource, DMM: Resource, which,
         test_output["voltage_dev_cold"] = std_voltage
 
 def POWER_CYCLE_TEST(PS,DMM,which,
-                     CALIBRATED_VOLTAGE_IN: bool, test_output,trace_output):
+                     CALIBRATED_VOLTAGE_IN: float, test_output,trace_output):
     '''Turns on board, waits for stabilized time and then records, repeats 10 times.'''
 
     pc_vols = []

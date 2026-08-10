@@ -5,9 +5,11 @@ import psycopg
 import sys
 import subprocess
 
+from openpyxl.styles import Border, Side
+
 import GraphicalOutputs
 import Utilities
-from Config import pc_tests_hide, hide_calibration_params
+from Config import pc_tests_hide, hide_calibration_params, cold_only
 from Utilities import convert_scientific_to_float, SELECT_PHASE
 from WorkbookCreator import *
 import matplotlib.pyplot as mp
@@ -33,11 +35,13 @@ if pc_tests_hide:
     hide_sheets = ["Multiple Power Cycle Cold","Multiple Power Cycle Warm"]
 else:
     hide_sheets = []
+    if cold_only:
+        hide_sheets = ["Multiple Power Cycle Warm"]
 
 def Trace_Getter(board_id, phase, output_path):
     '''Writes the data for the trace of a board to a file'''
     #again im very iffy about sql atm but this should work mostly fine
-    with get_connection() as conn:
+    with (get_connection() as conn):
         with conn.cursor() as cursor:
 
             cursor.execute("""
@@ -110,10 +114,10 @@ def Trace_Getter(board_id, phase, output_path):
 
                         #add current if it matches voltage length
                         if len(current) == len(voltage):
-                            if name == "Input Voltage Step (5 to 5.1)":
-                                #for this column we care about different results
+                            if name == "Input Voltage Step (5 to 5.1)" or name == "Nominal Load Cold":
                                 output["Input Voltage"] = current
-                            if name == "Nominal Load Cold":
+                            if name == "Multiple Power Cycle Cold":
+                                #for this column we care about different results
                                 output["Input Voltage"] = current
                             else:
                                 output["Current"] = current
@@ -216,22 +220,22 @@ ORDER BY
     #timestamp reformatting
     df["timestamp"] = pd.to_datetime(df["timestamp"]).dt.strftime("%Y-%m-%d %H:%M")
 
+    debug_remove = ["id","phase"]
+
     if pc_tests_hide:
-        debug_remove = [
-            "id",
-            "phase",
-            "voltage_dev_warm",
-            "voltage_dev_cold",
-            "mc_ave_vol",
-            "mc_ave_cur",
-            "mc_ave_vol_c",
-            "mc_ave_cur_c",
+        debug_remove = debug_remove + [
+            "voltage_dev_warm","voltage_dev_cold","mc_ave_vol","mc_ave_cur","mc_ave_vol_c","mc_ave_cur_c"
         ]
-        if hide_calibration_params:
-            debug_remove = debug_remove + ["calibrated_voltage","secondary_calibration"]
+    #same thing but if we want cold deviation only:
+    elif cold_only:
+        debug_remove = debug_remove + ["voltage_dev_warm","mc_ave_vol","mc_ave_cur"
+                                       ]
+    if hide_calibration_params:
+        debug_remove = debug_remove + ["calibrated_voltage","secondary_calibration"
+                                        ]
 
-        df = df.drop(columns=debug_remove, errors="ignore")
-
+    #drop the debug cols.
+    df = df.drop(columns=debug_remove, errors="ignore")
     df = df.rename(columns={
         "board_id": "BOARD ID",
         "timestamp": "TIMESTAMP",
@@ -284,14 +288,22 @@ ORDER BY
         if header in skip_headers:
             continue
 
-        for cell in col[1:]:  # Skip header row
+        for cell in col[1:]:  #skip header row
             if isinstance(cell.value, (int, float)):
                 cell.number_format = "0.00000E+00"
+#makes it all centered and reformat header row
+    thin_black = Side(style="thin", color="D5D5D5")
+    for row in ws.iter_rows():
+        for cell in row:
+            cell.alignment = Alignment(
+                horizontal="center",
+                vertical="center")
+            cell.border = Border(
+                right=thin_black)
 
     for cell in ws[1]:
         cell.fill = header_fill
         cell.font = Font(bold=True)
-        cell.alignment = Alignment(horizontal="center", vertical="center" )
     grey_fill = PatternFill(fill_type="solid",fgColor="EBEAEA")
     white_fill = PatternFill(fill_type="solid",fgColor="FFFFFF")
 

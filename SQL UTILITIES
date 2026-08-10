@@ -1,8 +1,19 @@
-#can kill table with this command set, but please dont
+// can kill table with this command set, but please dont
 DROP TABLE dc_dc_tests;
 DROP TABLE board_traces;
 
-SELECT *
-FROM dc_dc_tests
-WHERE campaign = 'Radiation'
-ORDER BY board_id;
+// delete cold tests for this list with a given phase
+UPDATE dc_dc_tests
+SET
+    secondary_calibration = NULL,
+    initial_cold_voltage = NULL,
+    initial_cold_current = NULL,
+    input_current_output_voltage = NULL,
+    output_step_load = NULL,
+    input_step_voltage = NULL,
+    cold_start_up = NULL,
+    voltage_dev_cold = NULL,
+    mc_ave_vol_c = NULL,
+    mc_ave_cur_c = NULL
+WHERE phase = 'YOUR_PHASE'
+  AND board_id IN ('001', '002', '003');

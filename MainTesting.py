@@ -1,5 +1,3 @@
-from idlelib import window
-
 import winsound
 from colorama import init, Fore, Back, Style
 from psycopg.errors import UniqueViolation
@@ -156,7 +154,7 @@ if __name__=='__main__':
             else:
                 print("NOMINAL LOAD STABILIZATION: ", Fore.RED + "FAIL")
 
-            if power_cycle_test:
+            if power_cycle_test and not cold_only:
 
                 #option to do power cycle testing, does take an extra ~30 sec per board
                 if MULTIPLE_POWER_CYCLES:
@@ -166,10 +164,8 @@ if __name__=='__main__':
 
                 test_output["calibrated_voltage_warm"] = (str(round(CALIBRATED_VOLTAGE_IN, 5)) +
                                                           " IN " + "/ " + str(round(inboard, 5)) + " OUT")
-                if all([test_output["mc_ave_vol"] <= bool(INITIAL_START_UP_VOLTAGE[1]), test_output["mc_ave_vol"] >=
-                                                                                  bool(INITIAL_START_UP_VOLTAGE[0]),
-                        test_output["mc_ave_cur"] <= bool(INITIAL_START_UP_CURRENT[1]),
-                        test_output["mc_ave_cur"] >= bool(INITIAL_START_UP_CURRENT[0])]):
+                if all([test_output["mc_ave_vol"] <= INITIAL_START_UP_VOLTAGE[1], test_output["mc_ave_vol"] >=
+                                                                                  INITIAL_START_UP_VOLTAGE[0]]):
                     # pass condition ^
                     test_output["within_range1"] = "PASS"
                     print("WARM OPERATIONAL RANGE: ", Fore.GREEN + "PASS")
@@ -206,12 +202,29 @@ if __name__=='__main__':
             input(Fore.MAGENTA +"Timer end, press ENTER to continue")
 
         #secondary calibration for cold testing
+            CALIBRATED_VOLTAGE_IN, inboard = Utilities.AUTOCALIBRATE_TO_IDEAL_INCOMING_VOLTAGE(DMM, PS,
+                                                                                               IDEAL_INCOMING_VOLTAGE,
+                                                                                               CALIBRATED_VOLTAGE_IN,
+                                                                                               debug)
+            test_output["secondary_calibration"] = (str(round(CALIBRATED_VOLTAGE_IN, 5)) +
+                                                    " IN " + "/ " + str(round(inboard, 5)) + " OUT")
+            #changed power cycle testing to be earlier to allow for stabilization.
+            if power_cycle_test:
+
+                if MULTIPLE_POWER_CYCLES:
+                    POWER_CYCLE_TEST(PS, DMM, CorW, CALIBRATED_VOLTAGE_IN, test_output, trace_output)
+                else:
+                    SINGLE_POWER_CYCLE_TEST(PS, DMM, CorW,CALIBRATED_VOLTAGE_IN , test_output, trace_output)
+                if all([test_output["mc_ave_vol_c"] <= OUTPUT_VOLTAGE_COLD[1], test_output["mc_ave_vol_c"] >=
+                                                                               OUTPUT_VOLTAGE_COLD[0]]):
+                    # pass condition ^
+                    test_output["within_range2"] = "PASS"
+                    print("COLD OPERATIONAL RANGE: ", Fore.GREEN + "PASS")
+                else:
+                    test_output["within_range2"] = "FAIL"
+                    print("COLD OPERATIONAL RANGE: ", Fore.RED + "FAIL")
 
             PS.write("*RST")
-            CALIBRATED_VOLTAGE_IN, inboard = Utilities.AUTOCALIBRATE_TO_IDEAL_INCOMING_VOLTAGE(DMM, PS,
-                                                IDEAL_INCOMING_VOLTAGE, CALIBRATED_VOLTAGE_IN,debug)
-            test_output["secondary_calibration"] = (str(round(CALIBRATED_VOLTAGE_IN,5)) +
-                                                 " IN "+"/ "+str(round(inboard,5)) + " OUT")
         #4.3.2
             if Input_and_Ouput_Cold(DMM,PS,CALIBRATED_VOLTAGE_IN,
                                     OUTPUT_VOLTAGE_COLD,INPUT_CURRENT_COLD,test_output,trace_output,debug):
@@ -232,31 +245,15 @@ if __name__=='__main__':
                 print("INPUT VOLTAGE STEP: ", Fore.GREEN + "PASS")
             else:
                 print("INPUT VOLTAGE STEP: ", Fore.RED + "FAIL")
-        #4.3.6
+
             time.sleep(0.5)
+
+        # 4.3.6
             if Cold_Startup_Test(DMM,PS,CALIBRATED_VOLTAGE_IN,OUTPUT_VOLTAGE_COLD,test_output,trace_output,
                                  debug,timer_debug):
                 print("COLD START UP: ", Fore.GREEN + "PASS")
             else:
                 print("COLD START UP: ", Fore.RED + "FAIL")
-
-            if power_cycle_test:
-                if MULTIPLE_POWER_CYCLES:
-                    POWER_CYCLE_TEST(PS, DMM, CorW, CALIBRATED_VOLTAGE_IN, test_output, trace_output)
-                else:
-                    SINGLE_POWER_CYCLE_TEST(PS, DMM, CorW, CALIBRATED_VOLTAGE_IN, test_output, trace_output)
-                test_output["calibrated_voltage_cold"] = (str(round(CALIBRATED_VOLTAGE_IN, 5)) +
-                                                          " IN " + "/ " + str(round(inboard, 5)) + " OUT")
-                if all([test_output["mc_ave_vol_c"] <= bool(OUTPUT_VOLTAGE_COLD[1]), test_output["mc_ave_vol_c"] >=
-                                                                               bool(OUTPUT_VOLTAGE_COLD[0]),
-                        test_output["mc_ave_cur_c"] <= bool(INPUT_CURRENT_COLD[1]),
-                        test_output["mc_ave_cur_c"] >= bool(INPUT_CURRENT_COLD[0])]):
-                    # pass condition ^
-                    test_output["within_range2"] = "PASS"
-                    print("COLD OPERATIONAL RANGE: ", Fore.GREEN + "PASS")
-                else:
-                    test_output["within_range2"] = "FAIL"
-                    print("COLD OPERATIONAL RANGE: ", Fore.RED + "FAIL")
 
         #log final results for this board
             update_cold_test(test_output)

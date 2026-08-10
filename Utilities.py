@@ -36,9 +36,9 @@ def Q_TIMER(t,t_debug,snd):
             sleeptime = sleeptime - 100
 
     if snd:
-        winsound.Beep(560, 1200)
-        time.sleep(0.5)
-        winsound.Beep(560, 1200)
+        winsound.Beep(590, 1200)
+        time.sleep(0.6)
+        winsound.Beep(590, 1200)
 
 def RESOURCE_CONNECTOR(RM)->(Resource,Resource):
     '''CONNECTS DMM THEN PS'''
@@ -151,9 +151,7 @@ def AUTOCALIBRATE_TO_IDEAL_INCOMING_VOLTAGE(  DMM: Resource, PS: Resource, IDEAL
     '''Makes minimal adjustments to get incoming voltage to 5 volts with up to 0.01 VOLT error'''
     #reset calibrated voltage
     CALIBRATED_VOLTAGE_IN = 5.0
-    PS.write("*RST")
     DMM.write("*RST")
-    PS.write("*CLS")
     time.sleep(0.3)
     PS.write("INST CH1")
     PS.write("VOLT "+str(CALIBRATED_VOLTAGE_IN))
