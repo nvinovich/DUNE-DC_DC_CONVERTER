@@ -306,6 +306,8 @@ ORDER BY
         cell.font = Font(bold=True)
     grey_fill = PatternFill(fill_type="solid",fgColor="EBEAEA")
     white_fill = PatternFill(fill_type="solid",fgColor="FFFFFF")
+    red_fill = PatternFill(fill_type="solid",fgColor="FFCFCF")
+    null_fill = PatternFill(fill_type="solid",fgColor="DFDFAA")
 
     for row in range(2, ws.max_row + 1):
 
@@ -324,6 +326,11 @@ ORDER BY
                     max_len,
                     len(str(cell.value))
                 )
+            if cell.value == "FAIL":
+                cell.fill = red_fill
+            if cell.value == "NULL" or cell.value == -1.0:
+                cell.fill = null_fill
+
 
         ws.column_dimensions[col_letter].width = max_len + 3
 

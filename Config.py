@@ -10,8 +10,7 @@ OUTPUT_VOLTAGE_COLD = [48.0,51.0]
 INPUT_CURRENT_COLD = [0.023,0.027] #same here
 
 #DEBUG CONFIG SETTINGS
-power_cycle_test, cold_only = True,True   #shouls be True, True unless you have good reason
-MULTIPLE_POWER_CYCLES = False #turn this off during typical testing
+power_cycle_test, cold_only = True,True   #should be true, and cold only true if we only care about cold stats (we do)
 pc_tests_hide = False #if False, FBD will try and retrieve power cycle statistics
 hide_calibration_params = True
 

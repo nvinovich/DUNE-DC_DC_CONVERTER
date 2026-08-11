@@ -157,10 +157,8 @@ if __name__=='__main__':
             if power_cycle_test and not cold_only:
 
                 #option to do power cycle testing, does take an extra ~30 sec per board
-                if MULTIPLE_POWER_CYCLES:
-                    POWER_CYCLE_TEST(PS, DMM, CorW, CALIBRATED_VOLTAGE_IN, test_output, trace_output)
-                else:
-                    SINGLE_POWER_CYCLE_TEST(PS, DMM, CorW, CALIBRATED_VOLTAGE_IN, test_output, trace_output)
+
+                SINGLE_POWER_CYCLE_TEST(PS, DMM, CorW, CALIBRATED_VOLTAGE_IN, test_output, trace_output)
 
                 test_output["calibrated_voltage_warm"] = (str(round(CALIBRATED_VOLTAGE_IN, 5)) +
                                                           " IN " + "/ " + str(round(inboard, 5)) + " OUT")
@@ -211,10 +209,8 @@ if __name__=='__main__':
             #changed power cycle testing to be earlier to allow for stabilization.
             if power_cycle_test:
 
-                if MULTIPLE_POWER_CYCLES:
-                    POWER_CYCLE_TEST(PS, DMM, CorW, CALIBRATED_VOLTAGE_IN, test_output, trace_output)
-                else:
-                    SINGLE_POWER_CYCLE_TEST(PS, DMM, CorW,CALIBRATED_VOLTAGE_IN , test_output, trace_output)
+                SINGLE_POWER_CYCLE_TEST(PS, DMM, CorW,CALIBRATED_VOLTAGE_IN , test_output, trace_output)
+
                 if all([test_output["mc_ave_vol_c"] <= OUTPUT_VOLTAGE_COLD[1], test_output["mc_ave_vol_c"] >=
                                                                                OUTPUT_VOLTAGE_COLD[0]]):
                     # pass condition ^
