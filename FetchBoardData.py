@@ -246,7 +246,7 @@ ORDER BY
         "initial_current": "INITIAL OUTPUT CURRENT",
         "initial_start_up": "INITIAL START UP",
         "input_voltage_sweep": "INPUT VOLTAGE SWEEP",
-        "nominal_load_performance": "NOMINAL LOAD PERFORMANCE",
+        "nominal_load_performance": "NOMINAL LOAD (WARM)",
 
         "voltage_dev_warm": "WARM VOLTAGE DEVIATION",
         "mc_ave_vol": "WARM POWERCYCLE AVE VOLTAGE",
@@ -256,13 +256,13 @@ ORDER BY
         "initial_cold_voltage": "INITIAL COLD VOLTAGE",
         "initial_cold_current": "INITIAL COLD CURRENT",
         "input_current_output_voltage": "INITIAL CURRENT OUTPUT VOLTAGE",
-        "output_step_load": "OUTPUT STEP LOAD",
+        "output_step_load": "NOMINAL LOAD (COLD)",
         "input_step_voltage": "INPUT STEP VOLTAGE",
         "cold_start_up": "COLD START UP",
 
-        "voltage_dev_cold": "COLD VOLTAGE DEVIATION",
-        "mc_ave_vol_c": "COLD POWERCYCLE AVE VOLTAGE",
-        "mc_ave_cur_c": "COLD POWERCYCLE AVE CURRENT",
+        "voltage_dev_cold": "VOLTAGE DEVIATION (COLD)",
+        "mc_ave_vol_c": "AVE VOLTAGE (COLD)",
+        "mc_ave_cur_c": "AVE CURRENT (COLD)",
     })
     df = df.map(convert_scientific_to_float) #convert my prior messy data back
     df.to_excel(output_file, index=False)
@@ -306,6 +306,8 @@ ORDER BY
         cell.font = Font(bold=True)
     grey_fill = PatternFill(fill_type="solid",fgColor="EBEAEA")
     white_fill = PatternFill(fill_type="solid",fgColor="FFFFFF")
+    red_fill = PatternFill(fill_type="solid",fgColor="FFCFCF")
+    null_fill = PatternFill(fill_type="solid",fgColor="DFDFAA")
 
     for row in range(2, ws.max_row + 1):
 
@@ -324,6 +326,11 @@ ORDER BY
                     max_len,
                     len(str(cell.value))
                 )
+            if cell.value == "FAIL":
+                cell.fill = red_fill
+            if cell.value == "NULL" or cell.value == -1.0:
+                cell.fill = null_fill
+
 
         ws.column_dimensions[col_letter].width = max_len + 3
 
