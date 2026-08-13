@@ -32,7 +32,7 @@ def Q_TIMER(t,t_debug,snd):
         sleeptime = t
         for i in range(int(t/100)):
             print(str(sleeptime) + " seconds remaining...")
-            time.sleep(10)
+            time.sleep(15)
             sleeptime = sleeptime - 100
 
     if snd:

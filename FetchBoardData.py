@@ -16,6 +16,7 @@ import matplotlib.pyplot as mp
 import numpy as np
 init(autoreset=True)
 
+#this also acts a terminal to run database management
 #updates here too
 DB_INFO = {
     "host": "localhost",
@@ -255,7 +256,7 @@ ORDER BY
         "secondary_calibration": "CALIBRATED INPUT VOLTAGE (COLD)",
         "initial_cold_voltage": "INITIAL COLD VOLTAGE",
         "initial_cold_current": "INITIAL COLD CURRENT",
-        "input_current_output_voltage": "INITIAL CURRENT OUTPUT VOLTAGE",
+        "input_current_output_voltage": "INITIAL COLD BEHAVIOR",
         "output_step_load": "NOMINAL LOAD (COLD)",
         "input_step_voltage": "INPUT STEP VOLTAGE",
         "cold_start_up": "COLD START UP",

@@ -149,7 +149,7 @@ if __name__=='__main__':
         #4.2.3
             time.sleep(0.5)
             if Nominal_Load_Performance(DMM, PS, RELAY, INITIAL_START_UP_VOLTAGE, CALIBRATED_VOLTAGE_IN,
-                                        test_output,trace_output,debug):
+                                        "WARM",test_output,trace_output,debug):
                 print("NOMINAL LOAD STABILIZATION: ", Fore.GREEN + "PASS")
             else:
                 print("NOMINAL LOAD STABILIZATION: ", Fore.RED + "FAIL")
@@ -230,8 +230,8 @@ if __name__=='__main__':
                 print("INITIAL COLD INPUT/OUTPUT: ", Fore.RED + "FAIL")
             time.sleep(0.5)
         #4.3.3
-            if  Output_Step_Load(DMM,PS, RELAY, CALIBRATED_VOLTAGE_IN,OUTPUT_VOLTAGE_COLD
-                    ,test_output,trace_output,debug):
+            if Nominal_Load_Performance(DMM,PS,RELAY,OUTPUT_VOLTAGE_COLD,CALIBRATED_VOLTAGE_IN,"COLD",
+                                        test_output,trace_output,debug):
                 print("NOMINAL LOAD COLD: "+ Fore.GREEN + "PASS")
             else:
                 print("NOMINAL LOAD COLD: "+ Fore.RED + "FAIL")

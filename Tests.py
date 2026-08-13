@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 from os.path import samefile
 
@@ -145,9 +146,21 @@ def Input_Voltage_Sweep(DMM: Resource, PS: Resource, INITIAL_START_UP_VOLTAGE: l
     return True
 
 def Nominal_Load_Performance(DMM: Resource, PS: Resource, RELAY,
-                    VOLTAGE_RANGE: list[float], CALIBRATED_VOLTAGE_IN:float, test_output,
-                             trace_output,debug:bool) -> bool:
+                    VOLTAGE_RANGE: list[float], CALIBRATED_VOLTAGE_IN:float, TEMP:str,
+                    test_output,trace_output,debug:bool) -> bool:
     '''4.2.3 DCDC CONVERTER DOC'''
+    #output storage assignments:
+    if TEMP == "COLD":
+        Test_Slot = "output_step_load"
+        Trace_Slot_A = "output_step_load_voltage_trace"
+        Trace_Slot_B = "output_step_load_current_trace"
+    elif TEMP == "WARM":
+        Test_Slot = "nominal_load_performance"
+        Trace_Slot_A = "nominal_load_voltage_trace"
+        Trace_Slot_B = "nominal_load_current_trace"
+    else:
+        sys.exit("Bad Nominal Load Temp Selection")
+
     #this will make semi-cont measurements and return based on final perf.
     DMM.write("*RST")
     #activates relay for 1 megaohn resistance channel
@@ -228,19 +241,19 @@ def Nominal_Load_Performance(DMM: Resource, PS: Resource, RELAY,
             for i in range(len(datalist2))]
     else:
         # error but no throw for lack of entries
-        test_output["nominal_load_performance"] = "ERR"
+        test_output[Test_Slot] = "ERR"
         return False
 
     #then save these outputs
-    trace_output["nominal_load_voltage_trace"] = datalist
-    trace_output["nominal_load_current_trace"] = datalist2
+    trace_output[Trace_Slot_A] = datalist
+    trace_output[Trace_Slot_B] = datalist2
 
     if all([dp <= VOLTAGE_RANGE[1] and dp >=VOLTAGE_RANGE[0] for dp in datalist]):
 
-        test_output["nominal_load_performance"] = "PASS"
+        test_output[Test_Slot] = "PASS"
         return True
     else:
-        test_output["nominal_load_performance"] = "FAIL"
+        test_output[Test_Slot] = "FAIL"
         return False
 
 def Input_and_Ouput_Cold( DMM: Resource, PS: Resource,CALIBRATED_VOLTAGE_IN:float,
@@ -392,101 +405,6 @@ def Input_Voltage_Step(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN: float
 
     test_output["input_step_voltage"] = "FAIL"
     return False
-
-def Output_Step_Load(DMM: Resource, PS: Resource, RELAY, CALIBRATED_VOLTAGE_IN,
-                     COLD_V,test_output, trace_output,debug:bool) ->bool:
-    '''4.3.3'''
-    DMM.write("*RST")
-    RELAY.write(b"reset\r")
-    DMM.write("ROUT:MULT:CLOS (@3)")
-    PS.write("*RST")
-
-    #activates channel relay for 1 mohm
-    PS.write("INST CH1")
-    PS.write("VOLT " + str(CALIBRATED_VOLTAGE_IN))
-    PS.write("CURR 0.050")
-    PS.write("OUTP ON")
-
-    #this takes 100 measurements in 2 sec, just as above
-    #if all fall within stable range within the time they are good.
-    DMM.write('FUNC "VOLT:DC"')
-    DMM.write('TRAC:CLE "defbuffer1"')
-    DMM.write('TRAC:POIN 100')
-    DMM.write('TRIG:LOAD "SimpleLoop",100,0.02')
-
-    DMM.write('INIT')
-    time.sleep(1)
-    RELAY.write(b"relay on 000\r")
-    time.sleep(0.5)
-    RELAY.write(b"relay off 000\r")
-
-    #let me know when done
-    DMM.query('*OPC?')
-    #same traceback and rformatting as other testing blocks
-    n = int(DMM.query('TRAC:ACT? "defbuffer1"'))
-    if debug:
-        print("samples:", n)
-    RELAY.write(b"reset\r")
-
-    if n > 0:
-        data = DMM.query(f'TRAC:DATA? 1,{n},"defbuffer1",READ')
-        datalist = list(data.split(','))
-        if debug:
-            print(datalist)
-        # mangled scipi formatting, had to do it manually
-        datalist = [
-            round(float(datalist[i][:datalist[i].index("E")]) * 10 ** int(datalist[i][datalist[i].index("E") + 1:]), 5)
-            for i in range(len(datalist))]
-    else:
-        test_output["output_step_load"] = "ERR" #error but do not throw if bad output
-        return False
-    if debug:
-        print("final step voltage ", datalist[-1])
-
-    #now we reset and do similar steps to get a current reading.
-    DMM.write("*RST")
-    time.sleep(0.5)
-    DMM.write("ROUT:MULT:OPEN (@3)")
-    DMM.write("ROUT:MULT:CLOS (@2)")
-    DMM.query("*OPC?")
-
-    DMM.write('FUNC "VOLT:DC"')
-    DMM.write('TRAC:CLE "defbuffer1"')
-    DMM.write('TRAC:POIN 100')
-    DMM.write('TRIG:LOAD "SimpleLoop",100,0.02')
-
-    DMM.write('INIT')
-    time.sleep(1)
-    RELAY.write(b"relay on 000\r")
-    time.sleep(0.5)
-    RELAY.write(b"relay off 000\r")
-
-    #let me know when done
-    DMM.query('*OPC?')
-    n = int(DMM.query('TRAC:ACT? "defbuffer1"'))
-    if debug:
-        print("samples (current) :", n)
-    if n > 0:
-        data = DMM.query(f'TRAC:DATA? 1,{n},"defbuffer1",READ')
-        datalist2 = list(data.split(','))
-        if debug:
-            print(datalist2)
-        datalist2 = [
-            round(float(datalist2[i][:datalist2[i].index("E")]) * 10 **
-                  int(datalist2[i][datalist2[i].index("E") + 1:]), 5)
-            for i in range(len(datalist2))]
-        trace_output["output_step_load_current_trace"] = datalist2
-        if debug:
-            print("final step voltage (current) ", datalist2[-1])
-
-    trace_output["output_step_load_voltage_trace"] = datalist
-
-    if all([dp <=COLD_V[1] and dp >=COLD_V[0] for dp in datalist][-10:]):
-        test_output["output_step_load"] = "PASS"
-        return True
-    else:
-        test_output["output_step_load"] = "FAIL"
-        return False
 
 def Cold_Startup_Test(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V,
                       test_output,trace_output,debug:bool,timer_debug: bool) -> bool:
