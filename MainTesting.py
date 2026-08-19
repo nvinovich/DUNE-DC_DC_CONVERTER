@@ -61,8 +61,11 @@ if __name__=='__main__':
             "calibrated_voltage": -1,
             "initial_voltage": -1,
             "initial_current": -1,
+            "load_voltage": -1,
+            "load_current": -1,
             "initial_start_up": "NULL",
-            "input_voltage_sweep": "NULL",
+            "input_voltage_sweep_w": "NULL",
+            "sweep_min_max_w":"NULL/NULL",
             "nominal_load_performance": "NULL",
 
             "mc_ave_vol": -1, #powercyles
@@ -73,12 +76,17 @@ if __name__=='__main__':
             "voltage_dev_cold":-1,
             "mc_ave_cur_c": -1,
 
+            #so so many tests
             "secondary_calibration":-1, #cold
             "initial_cold_voltage":-1,
             "initial_cold_current":-1,
+            "load_voltage_c": -1,
+            "load_current_c": -1,
             "input_current_output_voltage": "NULL",
             "output_step_load": "NULL",
             "input_step_voltage": "NULL",
+            "input_voltage_sweep_c": "NULL",
+            "sweep_min_max_c": "NULL/NULL",
             "cold_start_up": "NULL",
         }
         trace_output = {
@@ -142,7 +150,7 @@ if __name__=='__main__':
         #4.2.2
             time.sleep(0.5)
             if Input_Voltage_Sweep(DMM, PS, INITIAL_START_UP_VOLTAGE,
-                                   CALIBRATED_VOLTAGE_IN, test_output,trace_output,debug):
+                                   CALIBRATED_VOLTAGE_IN, CorW,test_output,trace_output,debug):
                 print("INPUT VOLTAGE SWEEP: ", Fore.GREEN + "PASS")
             else:
                 print("INPUT VOLTAGE SWEEP: ", Fore.RED + "FAIL")

@@ -10,7 +10,7 @@ from openpyxl.styles import Font, PatternFill, Alignment
 #this will be a fairly major change away from sql lite to psygopg so i hope it works?
 DB_INFO = {
     "host": "localhost",
-    #server ip is: 172.17.106.247, replace with host if not using the server computer
+    #server ip is: 172.17.106.247, replace localhost with this if not using the server computer
     "dbname": "dcdc_tests",
     "user": "studadmin",
     "password": "password",
@@ -39,8 +39,11 @@ def init_db():
                 calibrated_voltage TEXT,
                 initial_voltage TEXT,
                 initial_current TEXT,
+                load_voltage TEXT,
+                load_current TEXT,
                 initial_start_up TEXT,
-                input_voltage_sweep TEXT,
+                input_voltage_sweep_w TEXT,
+                sweep_min_max_w TEXT,
                 nominal_load_performance TEXT,
                 
                 voltage_dev_warm TEXT,
@@ -50,14 +53,20 @@ def init_db():
                 secondary_calibration TEXT,
                 initial_cold_voltage TEXT,
                 initial_cold_current TEXT,
+                load_voltage_c TEXT,
+                load_current_c TEXT,
                 input_current_output_voltage TEXT,
                 output_step_load TEXT,
                 input_step_voltage TEXT,
+                input_voltage_sweep_c TEXT,
+                sweep_min_max_c TEXT,
                 cold_start_up TEXT,
                 
                 voltage_dev_cold TEXT,
                 mc_ave_vol_c TEXT,
                 mc_ave_cur_c TEXT,
+                
+                shipment TEXT,
                 
                  UNIQUE (board_id, phase)
             )
@@ -80,8 +89,11 @@ def insert_test(data):
                 calibrated_voltage,
                 initial_voltage,
                 initial_current,
+                load_voltage,
+                load_current,
                 initial_start_up,
-                input_voltage_sweep,
+                input_voltage_sweep_w,
+                sweep_min_max_w,
                 nominal_load_performance,
                 
                 voltage_dev_warm,
@@ -91,18 +103,26 @@ def insert_test(data):
                 secondary_calibration,
                 initial_cold_voltage,
                 initial_cold_current,
+                load_voltage_c,
+                load_current_c,
                 input_current_output_voltage,
                 output_step_load,
                 input_step_voltage,
+                input_voltage_sweep_c,
+                sweep_min_max_c,
                 cold_start_up,
                 
                 voltage_dev_cold,
                 mc_ave_vol_c,
-                mc_ave_cur_c
+                mc_ave_cur_c,
                 
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s,%s,
-                      %s,%s, %s, %s,%s,%s,%s,%s, %s,%s,%s, %s, %s,%s)
-            """, (
+                shipment
+                
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s,%s,%s,
+                      %s, %s, %s, %s, %s, %s, %s, %s,%s,%s, 
+                      %s, %s, %s, %s, %s, %s, %s, %s,%s,%s,
+                      %s)
+            """, (      #fixed this :)
                 data["board_id"],
                 datetime.now(),
                 data["phase"],
@@ -111,8 +131,12 @@ def insert_test(data):
                 data["calibrated_voltage"],
                 data["initial_voltage"],
                 data["initial_current"],
+                data["load_voltage"],
+                data["load_current"],
+
                 data["initial_start_up"],
-                data["input_voltage_sweep"],
+                data["input_voltage_sweep_w"],
+                data["sweep_min_max_w"],
                 data["nominal_load_performance"],
 
                 #adding even more fun statistics
@@ -123,9 +147,14 @@ def insert_test(data):
                 data["secondary_calibration"],
                 data["initial_cold_voltage"],
                 data["initial_cold_current"],
+                data["load_voltage_c"],
+                data["load_current_c"],
+
                 data["input_current_output_voltage"],
                 data["output_step_load"],
                 data["input_step_voltage"],
+                data["input_voltage_sweep_c"],
+                data["sweep_min_max_c"],
                 data["cold_start_up"],
 
                 data["voltage_dev_cold"],
@@ -140,7 +169,7 @@ def update_cold_test(data):
     with get_connection() as conn:
         with conn.cursor() as cursor:
 
-        #for now I am turning off the update and recording for output emi and cold noise
+        #updating to have collumns for the new tesing battery
             cursor.execute("""
             UPDATE dc_dc_tests
         
@@ -151,9 +180,13 @@ def update_cold_test(data):
                 secondary_calibration = %s,
                 initial_cold_voltage = %s,
                 initial_cold_current = %s,
+                load_voltage_c = %s,
+                load_current_c = %s,
                 input_current_output_voltage = %s,
                 output_step_load = %s,
                 input_step_voltage = %s,
+                input_voltage_sweep_c = %s,
+                sweep_min_max_c = %s,
                 cold_start_up = %s,
                 timestamp = %s
         
@@ -161,6 +194,7 @@ def update_cold_test(data):
             AND phase = %s
         
             """,
+                           #god  i hate SQL
             (
                 data["voltage_dev_cold"],
                 data["mc_ave_vol_c"],
@@ -169,9 +203,14 @@ def update_cold_test(data):
                 data["secondary_calibration"],
                 data["initial_cold_voltage"],
                 data["initial_cold_current"],
+                data["load_voltage_c"],
+                data["load_current_c"],
+
                 data["input_current_output_voltage"],
                 data["output_step_load"],
                 data["input_step_voltage"],
+                data["input_voltage_sweep_c"],
+                data["sweep_min_max_c"],
                 data["cold_start_up"],
                 datetime.now(),
                 data["board_id"],
@@ -210,6 +249,9 @@ def init_trace_db():
 
     output_step_load_voltage_trace TEXT,
     output_step_load_current_trace TEXT,
+    
+    input_voltage_sweep_voltage_trace_c TEXT,
+    input_voltage_sweep_current_trace_c TEXT,
 
     cold_startup_voltage_trace TEXT,
     cold_startup_current_trace TEXT,
@@ -267,6 +309,9 @@ def update_cold_traces(board_id,phase,data
 
                                output_step_load_voltage_trace=%s,
                                output_step_load_current_trace=%s,
+                               
+                               input_voltage_sweep_voltage_trace_c =%s,
+                               input_voltage_sweep_current_trace_c =%s,
 
                                input_step_voltage_voltage_trace=%s,
                                input_step_voltage_current_trace=%s,
@@ -283,6 +328,9 @@ def update_cold_traces(board_id,phase,data
                                json.dumps(data["output_step_load_voltage_trace"]),
                                json.dumps(data["output_step_load_current_trace"]),
 
+                               json.dumps(data["input_voltage_sweep_voltage_trace_c"]),
+                               json.dumps(data["input_voltage_sweep_current_trace_c"]),
+
                                json.dumps(data["input_step_voltage_voltage_trace"]),
                                json.dumps(data["input_step_voltage_current_trace"]),
 
@@ -295,7 +343,9 @@ def update_cold_traces(board_id,phase,data
 
 
 def rename_board_id(old_id, new_id, phase):
-    '''updates an id to a new arg if it does not exist already'''
+    """
+    updates an id to a new arg if it does not exist already
+    """
     with get_connection() as conn:
         with conn.cursor() as cursor:
             cursor.execute("""
@@ -405,13 +455,12 @@ def delete_empty_phases():
 
 def Delete_Board_Phase_Entry(board_id, phase):
     """
-    Deletes a board entry for a specific testing phase.
+    Deletes a board entry for a specific testing phase
     """
-
     with get_connection() as conn:
         with conn.cursor() as cursor:
 
-            # Check if entry exists
+            #check if entry exists
             cursor.execute("""
                 SELECT *
                 FROM dc_dc_tests
@@ -436,22 +485,20 @@ def Delete_Board_Phase_Entry(board_id, phase):
                 print("Deletion cancelled.")
                 return
 
-            # Delete traces for this board and phase
+            #delete traces for this board and phase
             cursor.execute("""
                 DELETE FROM board_traces
                 WHERE board_id = %s
                   AND phase = %s
             """, (board_id, phase))
-
             trace_count = cursor.rowcount
 
-            # Delete test result for this board and phase
+            #delete test result for this board and phase
             cursor.execute("""
                 DELETE FROM dc_dc_tests
                 WHERE board_id = %s
                   AND phase = %s
             """, (board_id, phase))
-
             test_count = cursor.rowcount
 
             conn.commit()

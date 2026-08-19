@@ -68,9 +68,23 @@ def Initial_Start_Up_Test( DMM: Resource, PS: Resource,
     return False
 
 def Input_Voltage_Sweep(DMM: Resource, PS: Resource, INITIAL_START_UP_VOLTAGE: list[float],
-                        CALIBRATED_VOLTAGE_IN:float, test_output,
+                        CALIBRATED_VOLTAGE_IN:float, TEMP:str, test_output,
                         trace_output,debug:bool) -> bool:
     '''4.2.2 DCDC CONVERTER DOC'''
+    #temperature selection params:
+    if TEMP == "COLD":
+        Test_Slot = "input_voltage_sweep_c"
+        Trace_Slot_A = "input_voltage_sweep_voltage_trace_c"
+        Trace_Slot_B = "input_voltage_sweep_current_trace_c"
+        MinMax = "sweep_min_max_c"
+    elif TEMP == "WARM":
+        Test_Slot = "input_voltage_sweep_w"
+        Trace_Slot_A = "input_voltage_sweep_voltage_trace"
+        Trace_Slot_B = "input_voltage_sweep_current_trace" #yes this is right
+        MinMax = "sweep_min_max_w"
+
+    else:
+        sys.exit("Bad Nominal Load Temp Selection")
 
     #sets lower bound of calibrated voltage
     voltage = CALIBRATED_VOLTAGE_IN-0.1
@@ -131,18 +145,22 @@ def Input_Voltage_Sweep(DMM: Resource, PS: Resource, INITIAL_START_UP_VOLTAGE: l
         round(float(datalist[i][:datalist[i].index("E")]) * 10 ** int(datalist[i][datalist[i].index("E") + 1:]),
               5) for i in range(len(datalist))]
 
-    trace_output["input_voltage_sweep_voltage_trace"] = datalist
+    trace_output[Trace_Slot_A] = datalist
     datalist2 = [
         round(float(datalist2[i][:datalist2[i].index("E")]) * 10 ** int(datalist2[i][datalist2[i].index("E") + 1:]),
               5) for i in range(len(datalist2))]
-    trace_output["input_voltage_sweep_current_trace"] = datalist2
+    trace_output[Trace_Slot_B] = datalist2
+
+    #min and max recording
+    test_output[MinMax] = str(round(max(datalist),5)) + " / " + str(round(max(datalist),5))
+
     for i in range(100):
         mean_val = datalist[i]
         if mean_val <= INITIAL_START_UP_VOLTAGE[0] or mean_val >= INITIAL_START_UP_VOLTAGE[1]:
-            test_output["input_voltage_sweep"] = "FAIL"
+            test_output[Test_Slot] = "FAIL"
             return False
 
-    test_output["input_voltage_sweep"] = "PASS"
+    test_output[Test_Slot] = "PASS"
     return True
 
 def Nominal_Load_Performance(DMM: Resource, PS: Resource, RELAY,
@@ -154,10 +172,16 @@ def Nominal_Load_Performance(DMM: Resource, PS: Resource, RELAY,
         Test_Slot = "output_step_load"
         Trace_Slot_A = "output_step_load_voltage_trace"
         Trace_Slot_B = "output_step_load_current_trace"
+        LoadVol = "load_voltage_c"
+        LoadCur = "load_current_c"
+
     elif TEMP == "WARM":
         Test_Slot = "nominal_load_performance"
         Trace_Slot_A = "nominal_load_voltage_trace"
         Trace_Slot_B = "nominal_load_current_trace"
+        LoadVol = "load_voltage"
+        LoadCur = "load_current"
+
     else:
         sys.exit("Bad Nominal Load Temp Selection")
 
@@ -247,6 +271,12 @@ def Nominal_Load_Performance(DMM: Resource, PS: Resource, RELAY,
     #then save these outputs
     trace_output[Trace_Slot_A] = datalist
     trace_output[Trace_Slot_B] = datalist2
+
+    #load current and voltage calculation
+        #sort them first and then abridge to min 10 and averagify
+    datalist,datalist2 = sorted(datalist)[9:],sorted(datalist2)[9:]
+    test_output[LoadVol] = average(datalist)
+    test_output[LoadCur] = average(datalist2) #unsure if i should round this
 
     if all([dp <= VOLTAGE_RANGE[1] and dp >=VOLTAGE_RANGE[0] for dp in datalist]):
 

@@ -1,3 +1,11 @@
+//table login:
+enter
+enter
+enter
+enter
+password
+\c dcdc_tests;
+
 // can kill table with this command set, but please dont
 DROP TABLE dc_dc_tests;
 DROP TABLE board_traces;
@@ -17,3 +25,11 @@ SET
     mc_ave_cur_c = NULL
 WHERE phase = 'YOUR_PHASE'
   AND board_id IN ('001', '002', '003');
+
+//add new cols
+ALTER TABLE dc_dc_tests
+ADD column TYPE;
+
+//rename col
+ALTER TABLE board_traces
+RENAME COLUMN old_name TO new_name;

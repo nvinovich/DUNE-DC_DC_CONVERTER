@@ -7,7 +7,6 @@ import subprocess
 
 from openpyxl.styles import Border, Side
 
-import GraphicalOutputs
 import Utilities
 from Config import pc_tests_hide, hide_calibration_params, cold_only
 from Utilities import convert_scientific_to_float, SELECT_PHASE
@@ -61,7 +60,7 @@ def Trace_Getter(board_id, phase, output_path):
         data = dict(zip(columns, row))
 
         trace_pairs = {
-            "Input Voltage Sweep": (
+            "Input Voltage Sweep Warm": (
                 "input_voltage_sweep_voltage_trace",
                 "input_voltage_sweep_current_trace"
             ),
@@ -84,6 +83,10 @@ def Trace_Getter(board_id, phase, output_path):
             "Nominal Load Cold": (
                 "output_step_load_voltage_trace",
                 "output_step_load_current_trace"
+            ),
+            "Input Voltage Sweep Cold": (
+                "input_voltage_sweep_voltage_trace_c",
+                "input_voltage_sweep_current_trace_c"
             ),
             "Cold Start Up": (
                 "cold_startup_voltage_trace",
@@ -245,8 +248,12 @@ ORDER BY
         "calibrated_voltage": "CALIBRATED INPUT VOLTAGE (WARM)",
         "initial_voltage": "INITIAL OUTPUT VOLTAGE",
         "initial_current": "INITIAL OUTPUT CURRENT",
+        "load_voltage": "LOAD VOLTAGE",
+        "load_current": "LOAD CURRENT",
+
         "initial_start_up": "INITIAL START UP",
-        "input_voltage_sweep": "INPUT VOLTAGE SWEEP",
+        "input_voltage_sweep_w": "INPUT VOLTAGE SWEEP WARM",
+        "sweep_min_max_w": "SWEEP MIN/MAX",
         "nominal_load_performance": "NOMINAL LOAD (WARM)",
 
         "voltage_dev_warm": "WARM VOLTAGE DEVIATION",
@@ -256,15 +263,22 @@ ORDER BY
         "secondary_calibration": "CALIBRATED INPUT VOLTAGE (COLD)",
         "initial_cold_voltage": "INITIAL COLD VOLTAGE",
         "initial_cold_current": "INITIAL COLD CURRENT",
+        "load_voltage_c": "LOAD VOLTAGE (COLD)",
+        "load_current_c": "LOAD CURRENT (COLD)",
+
         "input_current_output_voltage": "INITIAL COLD BEHAVIOR",
         "output_step_load": "NOMINAL LOAD (COLD)",
         "input_step_voltage": "INPUT STEP VOLTAGE",
+        "input_voltage_sweep_c": "INPUT VOLTAGE SWEEP COLD",
+        "sweep_min_max_c": "SWEEP MIN/MAX",
         "cold_start_up": "COLD START UP",
 
         "voltage_dev_cold": "VOLTAGE DEVIATION (COLD)",
         "mc_ave_vol_c": "AVE VOLTAGE (COLD)",
         "mc_ave_cur_c": "AVE CURRENT (COLD)",
+        "shipment": "SHIPMENT",
     })
+
     df = df.map(convert_scientific_to_float) #convert my prior messy data back
     df.to_excel(output_file, index=False)
     wb = load_workbook(output_file)
@@ -282,6 +296,46 @@ ORDER BY
         "CALIBRATED INPUT VOLTAGE (WARM)",
         "CALIBRATED INPUT VOLTAGE (COLD)"
     }
+#a quick reordering since it came out funny
+    column_order = [
+        "BOARD ID",
+        "TIMESTAMP",
+        "TEST ADMIN",
+
+        # WARM
+        "CALIBRATED INPUT VOLTAGE (WARM)",
+        "INITIAL OUTPUT VOLTAGE",
+        "INITIAL OUTPUT CURRENT",
+        "LOAD VOLTAGE",
+        "LOAD CURRENT",
+        "INITIAL START UP",
+        "INPUT VOLTAGE SWEEP WARM",
+        "SWEEP MIN/MAX (WARM)",
+        "NOMINAL LOAD (WARM)",
+        "WARM VOLTAGE DEVIATION",
+        "WARM POWERCYCLE AVE VOLTAGE",
+        "WARM POWERCYCLE AVE CURRENT",
+
+        # COLD
+        "CALIBRATED INPUT VOLTAGE (COLD)",
+        "INITIAL COLD VOLTAGE",
+        "INITIAL COLD CURRENT",
+        "LOAD VOLTAGE (COLD)",
+        "LOAD CURRENT (COLD)",
+        "INITIAL COLD BEHAVIOR",
+        "NOMINAL LOAD (COLD)",
+        "INPUT STEP VOLTAGE",
+        "INPUT VOLTAGE SWEEP COLD",
+        "SWEEP MIN/MAX (COLD)",
+        "COLD START UP",
+        "VOLTAGE DEVIATION (COLD)",
+        "AVE VOLTAGE (COLD)",
+        "AVE CURRENT (COLD)",
+
+        "SHIPMENT",
+    ]
+
+    df = df[[col for col in column_order if col in df.columns]]
 
     for col in ws.iter_cols():
         header = col[0].value
@@ -332,86 +386,89 @@ ORDER BY
             if cell.value == "NULL" or cell.value == -1.0:
                 cell.fill = null_fill
 
-
         ws.column_dimensions[col_letter].width = max_len + 3
 
     wb.save(output_file)
 
 if __name__ == "__main__":
-    TRCHOICE = input(Fore.MAGENTA + ">Download phase SQL data to PC (1)\n"
-                                    ">Download phase SQL data to external drive (2)\n"
-                                    ">Download specific board voltage stability plot (3)\n"
-                            "Choose a readback option: ")
+    print(Fore.MAGENTA + "DCDC CONVERTER DATABASE MANAGEMENT TERMINAL\n")
+    running = True
+    while running:
+        TRCHOICE = input(Fore.MAGENTA + ">Download phase SQL data to PC (1)\n"
+                                        ">Download phase SQL data to external drive (2)\n"
+                                        ">Configure board shipment information (3)\n"
+                                        ">Quit data management (4)\n\n"
+                                "Choose a readback option (by number): ")
 
-    if TRCHOICE == "1":
-        phase = Utilities.SELECT_PHASE()
-        folder_path = os.path.join(DD, "DB_IMAGE",phase)
-        try:
-            os.makedirs(folder_path, exist_ok=True)
-            Test_Results_Getter(folder_path, XLSX_NAME,phase)
-            print(Fore.GREEN + "TEST DOWNLOAD COMPLETE")
-            # now that this saves, lets give it a moment and then write all trace data, this may take some time
-            time.sleep(0.2)
-            Export_All_Traces(folder_path,phase)
-
-        # just some generic error throws I stole that should be helpful
-        except PermissionError:
-            print("Error: No permission to write to this drive.")
-        except OSError as e:
-            print(f"Error creating folder or file: {e}")
-
-
-    elif TRCHOICE == "2":
-        #needs usb or other external mount at D
-        drive_letter = "D"
-        if os.path.exists(f"{drive_letter.upper()}:\\"):
-            print(f"{drive_letter.upper()}: DRIVE FOUND")
+        if TRCHOICE == "1":
             phase = Utilities.SELECT_PHASE()
-
-            folder_path = os.path.join(f"{drive_letter.upper()}:\\", "DB_IMAGE",phase)
-
+            folder_path = os.path.join(DD, "DB_IMAGE",phase)
             try:
-                #this is the actual writing setp, maybe I should prompt this for every n tests
                 os.makedirs(folder_path, exist_ok=True)
-                Test_Results_Getter(folder_path,XLSX_NAME,phase)
+                Test_Results_Getter(folder_path, XLSX_NAME,phase)
                 print(Fore.GREEN + "TEST DOWNLOAD COMPLETE")
-                #now that this saves, lets give it a moment and then write all trace data, this may take some time
+                # now that this saves, lets give it a moment and then write all trace data, this may take some time
                 time.sleep(0.2)
                 Export_All_Traces(folder_path,phase)
 
-            #just some generic error throws I stole that should be helpful
+            # just some generic error throws I stole that should be helpful
             except PermissionError:
                 print("Error: No permission to write to this drive.")
             except OSError as e:
                 print(f"Error creating folder or file: {e}")
-        else:
-            print(f"{drive_letter.upper()}: DRIVE NOT FOUND.")
 
-    elif TRCHOICE == "3":
-        # specific board behavior plotting
-        board_id = int(input("Board ID: "))
-        phase = Utilities.SELECT_PHASE()
-        if input("Warm or Cold Stability? (W/c)").lower() == "w":
-            GraphicalOutputs.Voltage_Histogram(board_id, phase, [58.0, 61.0])
+
+        elif TRCHOICE == "2":
+            #needs usb or other external mount at D
+            drive_letter = "D"
+            if os.path.exists(f"{drive_letter.upper()}:\\"):
+                print(f"{drive_letter.upper()}: DRIVE FOUND")
+                phase = Utilities.SELECT_PHASE()
+
+                folder_path = os.path.join(f"{drive_letter.upper()}:\\", "DB_IMAGE",phase)
+
+                try:
+                    #this is the actual writing setp, maybe I should prompt this for every n tests
+                    os.makedirs(folder_path, exist_ok=True)
+                    Test_Results_Getter(folder_path,XLSX_NAME,phase)
+                    print(Fore.GREEN + "TEST DOWNLOAD COMPLETE")
+                    #now that this saves, lets give it a moment and then write all trace data, this may take some time
+                    time.sleep(0.2)
+                    Export_All_Traces(folder_path,phase)
+
+                #just some generic error throws I stole that should be helpful
+                except PermissionError:
+                    print("Error: No permission to write to this drive.")
+                except OSError as e:
+                    print(f"Error creating folder or file: {e}")
+            else:
+                print(f"{drive_letter.upper()}: DRIVE NOT FOUND.")
+
+        elif TRCHOICE == "3":
+            #doesn't work yet, I am going to do the traveller manually for now.
             sys.exit()
-        GraphicalOutputs.Voltage_Histogram(board_id, phase, trace_column="multiple_power_cycle_voltage_c",
-                          xrs=[48.0, 50.0], temp="(Cold)")
 
-    elif TRCHOICE =="000":
-        #admin option to add a new phase name (or rename it)
-        ###??? DOESNT WORK YET
-        phasename = input("Input new phase name   ")
-        add_phase(phasename)
+        elif TRCHOICE == "4":
+            sys.exit()
 
-    elif TRCHOICE == "-100":
-        #admin option to delete a phase
-        if input("Delete all empty phases?").lower() == "y":
-            delete_empty_phases()
+        #super secret admin options
+        elif TRCHOICE =="000":
+            #admin option to add a new phase name (or rename it)
+            ###??? RENAME OPTION DOESNT WORK YET
+            phasename = input("Input new phase name   ")
+            add_phase(phasename)
 
-    elif TRCHOICE == "-1":
-        #delete specific board
-        print("board deleter")
-        phase = SELECT_PHASE()
-        Delete_Board_Phase_Entry(input("input board id to delete: "),phase)
-    else:
-        sys.exit("INVALID SELECTION")
+        elif TRCHOICE == "-111":
+            #admin option to delete a phase
+            if input("Delete all empty phases?").lower() == "y":
+                delete_empty_phases()
+
+        elif TRCHOICE == "-1":
+            #delete specific board
+            print()
+            print("board deleter")
+            phase = SELECT_PHASE()
+            Delete_Board_Phase_Entry(input("input board id to delete: "),phase)
+
+        else:
+            print(Fore.RED + "INVALID SELECTION")
