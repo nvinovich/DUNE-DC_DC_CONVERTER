@@ -120,8 +120,7 @@ def insert_test(data):
                 
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s,%s,%s,
                       %s, %s, %s, %s, %s, %s, %s, %s,%s,%s, 
-                      %s, %s, %s, %s, %s, %s, %s, %s,%s,%s,
-                      %s)
+                      %s, %s, %s, %s, %s, %s, %s, %s,%s,%s)
             """, (      #fixed this :)
                 data["board_id"],
                 datetime.now(),
