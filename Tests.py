@@ -72,12 +72,12 @@ def Input_Voltage_Sweep(DMM: Resource, PS: Resource, RELAY, INITIAL_START_UP_VOL
                         trace_output,debug:bool) -> bool:
     '''4.2.2 DCDC CONVERTER DOC'''
     #temperature selection params:
-    if TEMP == "COLD":
+    if TEMP == "c":
         Test_Slot = "input_voltage_sweep_c"
         Trace_Slot_A = "input_voltage_sweep_voltage_trace_c"
         Trace_Slot_B = "input_voltage_sweep_current_trace_c"
         MinMax = "sweep_min_max_c"
-    elif TEMP == "WARM":
+    elif TEMP == "w":
         Test_Slot = "input_voltage_sweep_w"
         Trace_Slot_A = "input_voltage_sweep_voltage_trace"
         Trace_Slot_B = "input_voltage_sweep_current_trace" #yes this is right
@@ -174,14 +174,14 @@ def Nominal_Load_Performance(DMM: Resource, PS: Resource, RELAY,
                     test_output,trace_output,debug:bool) -> bool:
     '''4.2.3 DCDC CONVERTER DOC'''
     #output storage assignments:
-    if TEMP == "COLD":
+    if TEMP == "c":
         Test_Slot = "output_step_load"
         Trace_Slot_A = "output_step_load_voltage_trace"
         Trace_Slot_B = "output_step_load_current_trace"
         LoadVol = "load_voltage_c"
         LoadCur = "load_current_c"
 
-    elif TEMP == "WARM":
+    elif TEMP == "w":
         Test_Slot = "nominal_load_performance"
         Trace_Slot_A = "nominal_load_voltage_trace"
         Trace_Slot_B = "nominal_load_current_trace"

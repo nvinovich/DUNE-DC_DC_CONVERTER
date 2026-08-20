@@ -120,8 +120,7 @@ def insert_test(data):
                 
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s,%s,%s,
                       %s, %s, %s, %s, %s, %s, %s, %s,%s,%s, 
-                      %s, %s, %s, %s, %s, %s, %s, %s,%s,%s,
-                      %s)
+                      %s, %s, %s, %s, %s, %s, %s, %s,%s,%s)
             """, (      #fixed this :)
                 data["board_id"],
                 datetime.now(),
@@ -455,7 +454,8 @@ def delete_empty_phases():
 
 def Delete_Board_Phase_Entry(board_id, phase):
     """
-    Deletes a board entry for a specific testing phase
+    Deletes a board entry for a specific testing phase, allows for bad inputation deletion in the case
+    that only traces are entered
     """
     with get_connection() as conn:
         with conn.cursor() as cursor:
@@ -469,12 +469,22 @@ def Delete_Board_Phase_Entry(board_id, phase):
             """, (board_id, phase))
 
             entry = cursor.fetchone()
+            entry2 = False
 
             if not entry:
-                print(f"No entry found for Board {board_id} in phase '{phase}'")
-                return
+                # check if entry exists in traces at least
+                cursor.execute("""
+                    SELECT *
+                    FROM board_traces
+                    WHERE board_id = %s
+                      AND phase = %s
+                """, (board_id, phase))
 
-            print(f"\nDeleting:")
+                entry2 = cursor.fetchone()
+                if not entry2:
+                    print(f"No entry found for Board {board_id} in phase '{phase}'")
+                    return
+
             print(f"Board ID: {board_id}")
             print(f"Phase: {phase}")
             print(entry)
@@ -485,7 +495,7 @@ def Delete_Board_Phase_Entry(board_id, phase):
                 print("Deletion cancelled.")
                 return
 
-            #delete traces for this board and phase
+            #delete traces for this board and phase, or phase only if only possible
             cursor.execute("""
                 DELETE FROM board_traces
                 WHERE board_id = %s
@@ -493,16 +503,19 @@ def Delete_Board_Phase_Entry(board_id, phase):
             """, (board_id, phase))
             trace_count = cursor.rowcount
 
-            #delete test result for this board and phase
-            cursor.execute("""
-                DELETE FROM dc_dc_tests
-                WHERE board_id = %s
+            #doesnt do if only trace exists
+            if entry:
+                cursor.execute("""
+                    DELETE FROM dc_dc_tests
+                    WHERE board_id = %s
                   AND phase = %s
-            """, (board_id, phase))
-            test_count = cursor.rowcount
+                """, (board_id, phase))
+                test_count = cursor.rowcount
 
             conn.commit()
 
             print("\nDeletion complete:")
-            print(f"Deleted {test_count} test entry(s)")
-            print(f"Deleted {trace_count} trace entry(s)")
+            if entry:
+                print(f"Deleted {test_count} test entry(s)")
+            if entry2:
+                print(f"Deleted {trace_count} trace entry(s)")

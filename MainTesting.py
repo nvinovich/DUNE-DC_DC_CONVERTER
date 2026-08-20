@@ -156,7 +156,7 @@ if __name__=='__main__':
                 print("INPUT VOLTAGE SWEEP: ", Fore.RED + "FAIL")
         #4.2.3
             if Nominal_Load_Performance(DMM, PS, RELAY, INITIAL_START_UP_VOLTAGE, CALIBRATED_VOLTAGE_IN,
-                                        "WARM",test_output,trace_output,debug):
+                                    CorW,test_output,trace_output,debug):
                 print("NOMINAL LOAD STABILIZATION: ", Fore.GREEN + "PASS")
             else:
                 print("NOMINAL LOAD STABILIZATION: ", Fore.RED + "FAIL")
@@ -236,7 +236,7 @@ if __name__=='__main__':
             else:
                 print("INITIAL COLD INPUT/OUTPUT: ", Fore.RED + "FAIL")
         #4.3.3
-            if Nominal_Load_Performance(DMM,PS,RELAY,OUTPUT_VOLTAGE_COLD,CALIBRATED_VOLTAGE_IN,"COLD",
+            if Nominal_Load_Performance(DMM,PS,RELAY,OUTPUT_VOLTAGE_COLD,CALIBRATED_VOLTAGE_IN,"c",
                                         test_output,trace_output,debug):
                 print("NOMINAL LOAD COLD: "+ Fore.GREEN + "PASS")
             else:

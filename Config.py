@@ -16,4 +16,5 @@ hide_calibration_params = True
 
 debug = False #general debug to see more numbers during testing
 timer_debug, dtime = False, 0.5 #timer negation for quenching times, skips timers if True
+q_time_interval_scale = 0.2     #timer multiple of 100, ie 0.2*100 = 20
 snd = True #play timer completion sound
