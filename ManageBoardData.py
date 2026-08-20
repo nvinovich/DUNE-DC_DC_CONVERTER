@@ -390,6 +390,10 @@ ORDER BY
 
     wb.save(output_file)
 
+def Shipment_Creator():
+    print("\nShipment Creator...\n")
+    return
+
 if __name__ == "__main__":
     print(Fore.MAGENTA + "DCDC CONVERTER DATABASE MANAGEMENT TERMINAL\n")
     running = True

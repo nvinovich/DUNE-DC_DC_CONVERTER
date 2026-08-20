@@ -6,7 +6,7 @@ import serial
 from serial.tools import list_ports
 from colorama import init, Fore, Back, Style
 
-from Config import dtime, voltage_jump_scale
+from Config import dtime, voltage_jump_scale, q_time_interval_scale
 
 init(autoreset=True)
 import pyvisa
@@ -32,7 +32,7 @@ def Q_TIMER(t,t_debug,snd):
         sleeptime = t
         for i in range(int(t/100)):
             print(str(sleeptime) + " seconds remaining...")
-            time.sleep(15)
+            time.sleep(100*q_time_interval_scale)
             sleeptime = sleeptime - 100
 
     if snd:
