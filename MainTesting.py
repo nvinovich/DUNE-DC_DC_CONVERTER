@@ -53,6 +53,7 @@ if __name__=='__main__':
 
     while test_more_boards_o7:
     #starts storing data for next board
+        CALIBRATED_VOLTAGE_IN = 5.0     #default value each time
         test_output = {
             "board_id": "NA", #warm
             "phase": phase,
@@ -148,25 +149,23 @@ if __name__=='__main__':
             else:
                 print("INITIAL START UP: ", Fore.RED + "FAIL")
         #4.2.2
-            time.sleep(0.5)
-            if Input_Voltage_Sweep(DMM, PS, INITIAL_START_UP_VOLTAGE,
+            if Input_Voltage_Sweep(DMM, PS, RELAY, INITIAL_START_UP_VOLTAGE,
                                    CALIBRATED_VOLTAGE_IN, CorW,test_output,trace_output,debug):
                 print("INPUT VOLTAGE SWEEP: ", Fore.GREEN + "PASS")
             else:
                 print("INPUT VOLTAGE SWEEP: ", Fore.RED + "FAIL")
         #4.2.3
-            time.sleep(0.5)
             if Nominal_Load_Performance(DMM, PS, RELAY, INITIAL_START_UP_VOLTAGE, CALIBRATED_VOLTAGE_IN,
                                         "WARM",test_output,trace_output,debug):
                 print("NOMINAL LOAD STABILIZATION: ", Fore.GREEN + "PASS")
             else:
                 print("NOMINAL LOAD STABILIZATION: ", Fore.RED + "FAIL")
 
-            if power_cycle_test and not cold_only:
+            if do_power_cycle_test and not cold_only:
 
                 #option to do power cycle testing, does take an extra ~30 sec per board
 
-                SINGLE_POWER_CYCLE_TEST(PS, DMM, CorW, CALIBRATED_VOLTAGE_IN, test_output, trace_output)
+                Power_Cycle_Test(PS, DMM, CorW, CALIBRATED_VOLTAGE_IN, test_output, trace_output)
 
                 test_output["calibrated_voltage_warm"] = (str(round(CALIBRATED_VOLTAGE_IN, 5)) +
                                                           " IN " + "/ " + str(round(inboard, 5)) + " OUT")
@@ -215,9 +214,9 @@ if __name__=='__main__':
             test_output["secondary_calibration"] = (str(round(CALIBRATED_VOLTAGE_IN, 5)) +
                                                     " IN " + "/ " + str(round(inboard, 5)) + " OUT")
             #changed power cycle testing to be earlier to allow for stabilization.
-            if power_cycle_test:
+            if do_power_cycle_test:
 
-                SINGLE_POWER_CYCLE_TEST(PS, DMM, CorW,CALIBRATED_VOLTAGE_IN , test_output, trace_output)
+                Power_Cycle_Test(PS, DMM, CorW, CALIBRATED_VOLTAGE_IN, test_output, trace_output)
 
                 if all([test_output["mc_ave_vol_c"] <= OUTPUT_VOLTAGE_COLD[1], test_output["mc_ave_vol_c"] >=
                                                                                OUTPUT_VOLTAGE_COLD[0]]):
@@ -236,21 +235,25 @@ if __name__=='__main__':
 
             else:
                 print("INITIAL COLD INPUT/OUTPUT: ", Fore.RED + "FAIL")
-            time.sleep(0.5)
         #4.3.3
             if Nominal_Load_Performance(DMM,PS,RELAY,OUTPUT_VOLTAGE_COLD,CALIBRATED_VOLTAGE_IN,"COLD",
                                         test_output,trace_output,debug):
                 print("NOMINAL LOAD COLD: "+ Fore.GREEN + "PASS")
             else:
                 print("NOMINAL LOAD COLD: "+ Fore.RED + "FAIL")
+        #additional voltage sweep test for cold performance
             time.sleep(0.5)
+            if Input_Voltage_Sweep(DMM, PS, RELAY, OUTPUT_VOLTAGE_COLD,
+                                   CALIBRATED_VOLTAGE_IN, CorW,test_output,trace_output,debug):
+                print("INPUT VOLTAGE SWEEP (COLD): ", Fore.GREEN + "PASS")
+            else:
+                print("INPUT VOLTAGE SWEEP (COLD): ", Fore.RED + "FAIL")
         #4.3.4
             if Input_Voltage_Step(DMM,PS,CALIBRATED_VOLTAGE_IN,OUTPUT_VOLTAGE_COLD,test_output,trace_output,debug):
                 print("INPUT VOLTAGE STEP: ", Fore.GREEN + "PASS")
             else:
                 print("INPUT VOLTAGE STEP: ", Fore.RED + "FAIL")
 
-            time.sleep(0.5)
 
         # 4.3.6
             if Cold_Startup_Test(DMM,PS,CALIBRATED_VOLTAGE_IN,OUTPUT_VOLTAGE_COLD,test_output,trace_output,

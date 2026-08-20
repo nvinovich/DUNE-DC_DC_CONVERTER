@@ -6,7 +6,7 @@ import serial
 from serial.tools import list_ports
 from colorama import init, Fore, Back, Style
 
-from Config import dtime
+from Config import dtime, voltage_jump_scale
 
 init(autoreset=True)
 import pyvisa
@@ -187,9 +187,9 @@ def AUTOCALIBRATE_TO_IDEAL_INCOMING_VOLTAGE(  DMM: Resource, PS: Resource, IDEAL
 
         if (incoming_volts - IDEAL_INCOMING_VOLTAGE) >= tolerance:
             #if error >=
-            CALIBRATED_VOLTAGE_IN -=0.0025*IDEAL_INCOMING_VOLTAGE
+            CALIBRATED_VOLTAGE_IN -=0.0025*IDEAL_INCOMING_VOLTAGE*voltage_jump_scale
         if (incoming_volts - IDEAL_INCOMING_VOLTAGE) <= -tolerance:
-            CALIBRATED_VOLTAGE_IN +=0.0025*IDEAL_INCOMING_VOLTAGE
+            CALIBRATED_VOLTAGE_IN +=0.0025*IDEAL_INCOMING_VOLTAGE*voltage_jump_scale
         PS.write("VOLT "+str(CALIBRATED_VOLTAGE_IN))
         PS.query("*OPC?")
         time.sleep(0.05)

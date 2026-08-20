@@ -47,8 +47,8 @@ def Initial_Start_Up_Test( DMM: Resource, PS: Resource,
         time.sleep(0.1)
     DMM.write("ROUT:MULT:OPEN (@2)")
 
-    test_result = float(round(np.mean(sample_volts),3)) #fixed a minor parsing issue
-    test_result2 = float(round(np.mean(sample_mamps),3))
+    test_result = float(round(np.mean(sample_volts),4)) #fixed a minor parsing issue
+    test_result2 = float(round(np.mean(sample_mamps),4))
     if debug:
         print("voltage debug results:")
         print(sample_volts)
@@ -67,7 +67,7 @@ def Initial_Start_Up_Test( DMM: Resource, PS: Resource,
     test_output["initial_start_up"] = "FAIL"
     return False
 
-def Input_Voltage_Sweep(DMM: Resource, PS: Resource, INITIAL_START_UP_VOLTAGE: list[float],
+def Input_Voltage_Sweep(DMM: Resource, PS: Resource, RELAY, INITIAL_START_UP_VOLTAGE: list[float],
                         CALIBRATED_VOLTAGE_IN:float, TEMP:str, test_output,
                         trace_output,debug:bool) -> bool:
     '''4.2.2 DCDC CONVERTER DOC'''
@@ -86,6 +86,11 @@ def Input_Voltage_Sweep(DMM: Resource, PS: Resource, INITIAL_START_UP_VOLTAGE: l
     else:
         sys.exit("Bad Nominal Load Temp Selection")
 
+    #set load during testing cycle
+    time.sleep(0.1)
+    RELAY.write(b"relay on 000\r")
+    time.sleep(1)
+
     #sets lower bound of calibrated voltage
     voltage = CALIBRATED_VOLTAGE_IN-0.1
     PS.write("VOLT " + str(voltage))
@@ -102,7 +107,6 @@ def Input_Voltage_Sweep(DMM: Resource, PS: Resource, INITIAL_START_UP_VOLTAGE: l
         voltage += 0.2/200
         time.sleep(0.02)
 
-    sample = []
     DMM.query("*OPC?")
     #get data read back from buffer
     n = int(DMM.query('TRAC:ACT? "defbuffer1"'))
@@ -130,13 +134,15 @@ def Input_Voltage_Sweep(DMM: Resource, PS: Resource, INITIAL_START_UP_VOLTAGE: l
         voltage += 0.2/200
         time.sleep(2/200)
 
-    sample = []
     DMM.query("*OPC?")
     n = int(DMM.query('TRAC:ACT? "defbuffer1"'))
     if debug:
         print("samples ", n)
     sample = DMM.query(f'TRAC:DATA? 1,{n},"defbuffer1",READ')
     datalist2 = list(sample.split(','))
+
+    #end load
+    RELAY.write(b"relay off 000\r")
 
     #this block for out voltage, next for current read
     if debug:
@@ -536,8 +542,8 @@ def Cold_Startup_Test(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V
     test_output["cold_start_up"] = "FAIL"
     return False
 
-def SINGLE_POWER_CYCLE_TEST(PS: Resource, DMM: Resource, which,
-                            CALIBRATED_VOLTAGE_IN: float, test_output, trace_output):
+def Power_Cycle_Test(PS: Resource, DMM: Resource, which,
+                     CALIBRATED_VOLTAGE_IN: float, test_output, trace_output):
     '''Turns on board, waits for stabilization and then records continuously to 100 samples'''
 
     #initialization of PS and DMM
