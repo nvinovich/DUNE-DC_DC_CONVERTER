@@ -238,9 +238,9 @@ if __name__=='__main__':
         #4.3.3
             if Nominal_Load_Performance(DMM,PS,RELAY,OUTPUT_VOLTAGE_COLD,CALIBRATED_VOLTAGE_IN,"c",
                                         test_output,trace_output,debug):
-                print("NOMINAL LOAD COLD: "+ Fore.GREEN + "PASS")
+                print("NOMINAL LOAD COLD:  "+ Fore.GREEN + "PASS")
             else:
-                print("NOMINAL LOAD COLD: "+ Fore.RED + "FAIL")
+                print("NOMINAL LOAD COLD:  "+ Fore.RED + "FAIL")
         #additional voltage sweep test for cold performance
             time.sleep(0.5)
             if Input_Voltage_Sweep(DMM, PS, RELAY, OUTPUT_VOLTAGE_COLD,

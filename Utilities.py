@@ -92,7 +92,7 @@ def WARM_TEST_EXISTS(board_id: str,phase: str) ->bool:
             cursor.execute("""
                 SELECT 
                     initial_start_up,
-                    input_voltage_sweep,
+                    input_voltage_sweep_w,
                     nominal_load_performance
                 FROM dc_dc_tests
                 WHERE board_id = %s

@@ -120,7 +120,8 @@ def insert_test(data):
                 
             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s,%s,%s,
                       %s, %s, %s, %s, %s, %s, %s, %s,%s,%s, 
-                      %s, %s, %s, %s, %s, %s, %s, %s,%s,%s)
+                      %s, %s, %s, %s, %s, %s, %s, %s,%s,%s,
+                      %s)
             """, (      #fixed this :)
                 data["board_id"],
                 datetime.now(),
@@ -160,7 +161,8 @@ def insert_test(data):
                 data["mc_ave_vol_c"],
                 data["mc_ave_cur_c"],
 
-                "",
+                " ", #this should event ually be replaced by a real shipment name, or at least make
+                #a special function for it
             ))
             conn.commit()
 

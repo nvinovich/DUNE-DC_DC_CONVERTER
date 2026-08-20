@@ -87,6 +87,7 @@ def Input_Voltage_Sweep(DMM: Resource, PS: Resource, RELAY, INITIAL_START_UP_VOL
         sys.exit("Bad Nominal Load Temp Selection")
 
     #set load during testing cycle
+    DMM.write("*RST")
     time.sleep(0.1)
     RELAY.write(b"relay on 000\r")
     time.sleep(1)
@@ -94,6 +95,8 @@ def Input_Voltage_Sweep(DMM: Resource, PS: Resource, RELAY, INITIAL_START_UP_VOL
     #sets lower bound of calibrated voltage
     voltage = CALIBRATED_VOLTAGE_IN-0.1
     PS.write("VOLT " + str(voltage))
+    #oops how could i have never decided to swithc it on lol
+    PS.write("OUTP ON")
     time.sleep(0.5)
     DMM.write('FUNC "VOLT:DC"')
     DMM.write("ROUT:MULT:CLOS (@3)")
@@ -143,6 +146,7 @@ def Input_Voltage_Sweep(DMM: Resource, PS: Resource, RELAY, INITIAL_START_UP_VOL
 
     #end load
     RELAY.write(b"relay off 000\r")
+    DMM.write("ROUT:MULT:OPEN (@2)")
 
     #this block for out voltage, next for current read
     if debug:
@@ -551,6 +555,7 @@ def Power_Cycle_Test(PS: Resource, DMM: Resource, which,
     pc_cur = []
     DMM.write("*RST")
     DMM.write("*CLS")
+    time.sleep(1)
     PS.write("VOLT " + str(CALIBRATED_VOLTAGE_IN))
     PS.write("CURR 0.033")
 
@@ -564,7 +569,7 @@ def Power_Cycle_Test(PS: Resource, DMM: Resource, which,
     # this delay needed to be long as voltage is somewhat slow to stabilize from off state
     time.sleep(2)
     DMM.write('INIT')
-    time.sleep(1)
+    time.sleep(1.25)
 
     DMM.query("*OPC?")
     DMM.write("ROUT:MULT:OPEN (@3)")
