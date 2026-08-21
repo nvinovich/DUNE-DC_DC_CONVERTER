@@ -12,7 +12,7 @@ INPUT_CURRENT_COLD = [0.0225,0.027] #same here
 #DEBUG CONFIG SETTINGS
 do_power_cycle_test, cold_only = True,True   #should be true, and cold only true if we only care about cold stats (we do)
 pc_tests_hide = False #if False, FBD will try and retrieve power cycle statistics
-hide_calibration_params = True
+hide_calibration_params = False
 
 debug = False #general debug to see more numbers during testing
 timer_debug, dtime = False, 0.5 #timer negation for quenching times, skips timers if True

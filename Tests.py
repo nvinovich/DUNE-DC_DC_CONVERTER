@@ -162,7 +162,7 @@ def Input_Voltage_Sweep(DMM: Resource, PS: Resource, RELAY, INITIAL_START_UP_VOL
     trace_output[Trace_Slot_B] = datalist2
 
     #min and max recording
-    test_output[MinMax] = str(round(max(datalist),5)) + " / " + str(round(max(datalist),5))
+    test_output[MinMax] = str(round(min(datalist),5)) + " / " + str(round(max(datalist),5))
 
     for i in range(100):
         mean_val = datalist[i]
@@ -284,7 +284,7 @@ def Nominal_Load_Performance(DMM: Resource, PS: Resource, RELAY,
 
     #load current and voltage calculation
         #sort them first and then abridge to min 10 and averagify
-    datalist,datalist2 = sorted(datalist)[9:],sorted(datalist2)[9:]
+    datalist,datalist2 = sorted(datalist)[:9],sorted(datalist2)[:9]
     test_output[LoadVol] = average(datalist)
     test_output[LoadCur] = average(datalist2) #unsure if i should round this
 

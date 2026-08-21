@@ -216,8 +216,8 @@ def AUTOCALIBRATE_TO_IDEAL_INCOMING_VOLTAGE(  DMM: Resource, PS: Resource, IDEAL
         final_time = round(time.time() - start_time,3)
         print(Back.LIGHTCYAN_EX + Fore.BLACK + str(final_time) + " sec. elapsed in calibration")
     else:
-        print("INPUT VOLTAGE CALIBRATED TO " + Fore.GREEN + str(round(CALIBRATED_VOLTAGE_IN,5)), "VOLTS, OUTPUT OF "
-              + Fore.GREEN+str(round((incoming_volts),5)), "VOLTS")
+        print("INPUT VOLTAGE CALIBRATED TO " + Fore.GREEN + str(round(CALIBRATED_VOLTAGE_IN,6)), "VOLTS, OUTPUT OF "
+              + Fore.GREEN+str(round((incoming_volts),6)), "VOLTS")
     DMM.write("*RST")
 
     return CALIBRATED_VOLTAGE_IN, incoming_volts

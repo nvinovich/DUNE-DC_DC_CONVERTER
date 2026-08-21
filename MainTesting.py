@@ -167,8 +167,8 @@ if __name__=='__main__':
 
                 Power_Cycle_Test(PS, DMM, CorW, CALIBRATED_VOLTAGE_IN, test_output, trace_output)
 
-                test_output["calibrated_voltage_warm"] = (str(round(CALIBRATED_VOLTAGE_IN, 5)) +
-                                                          " IN " + "/ " + str(round(inboard, 5)) + " OUT")
+                test_output["calibrated_voltage_warm"] = (str(round(CALIBRATED_VOLTAGE_IN, 6)) +
+                                                          " IN " + "/ " + str(round(inboard, 6)) + " OUT")
                 if all([test_output["mc_ave_vol"] <= INITIAL_START_UP_VOLTAGE[1], test_output["mc_ave_vol"] >=
                                                                                   INITIAL_START_UP_VOLTAGE[0]]):
                     # pass condition ^
@@ -211,8 +211,8 @@ if __name__=='__main__':
                                                                                                IDEAL_INCOMING_VOLTAGE,
                                                                                                CALIBRATED_VOLTAGE_IN,
                                                                                                debug)
-            test_output["secondary_calibration"] = (str(round(CALIBRATED_VOLTAGE_IN, 5)) +
-                                                    " IN " + "/ " + str(round(inboard, 5)) + " OUT")
+            test_output["secondary_calibration"] = (str(round(CALIBRATED_VOLTAGE_IN, 6)) +
+                                                    " IN " + "/ " + str(round(inboard, 6)) + " OUT")
             #changed power cycle testing to be earlier to allow for stabilization.
             if do_power_cycle_test:
 
