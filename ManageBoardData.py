@@ -9,6 +9,7 @@ from openpyxl.styles import Border, Side
 
 import Utilities
 from Config import pc_tests_hide, hide_calibration_params, cold_only
+from ShipmentCreation import Shipment_Creator
 from Utilities import convert_scientific_to_float, SELECT_PHASE
 from WorkbookCreator import *
 import matplotlib.pyplot as mp
@@ -390,9 +391,6 @@ ORDER BY
 
     wb.save(output_file)
 
-def Shipment_Creator():
-    print("\nShipment Creator...\n")
-    return
 
 if __name__ == "__main__":
     print(Fore.MAGENTA + "DCDC CONVERTER DATABASE MANAGEMENT TERMINAL\n")
@@ -449,8 +447,9 @@ if __name__ == "__main__":
                 print(f"{drive_letter.upper()}: DRIVE NOT FOUND.")
 
         elif TRCHOICE == "3":
-            #doesn't work yet, I am going to do the traveller manually for now.
-            sys.exit()
+            #doesn't fully work yet, I am going to do the traveler manually for now.
+            Shipment_Creator()
+            print("\nComplete.\n")
 
         elif TRCHOICE == "4":
             sys.exit()
