@@ -1,12 +1,8 @@
-import os
 import sys
 import time
-from os.path import samefile
-
-import pyvisa
-import winsound
 from colorama import init, Fore, Back, Style
 from numpy.ma.extras import average
+import pyvisa
 
 from Config import snd
 from Utilities import Q_TIMER
@@ -14,7 +10,6 @@ from Utilities import Q_TIMER
 init(autoreset=True)
 import numpy as np
 from pyvisa import Resource
-import matplotlib.pyplot as mp
 show_plots = False
 
 #               !!! THIS IS THE BIG SCARY TESTING FILE, PLEASE DON'T MESS WITH  !!!
@@ -455,7 +450,6 @@ def Cold_Startup_Test(DMM: Resource, PS: Resource, CALIBRATED_VOLTAGE_IN, COLD_V
     #have user manually do these steps
     input(Fore.MAGENTA + "Confirm that all power supply channels are OFF by pressing ENTER")
     input(Fore.MAGENTA + "Press ENTER to begin timer")
-    print("Timer begun for 600 seconds...")
     #swithces off for full time to fully cool time
     Q_TIMER(600,timer_debug,snd)
 

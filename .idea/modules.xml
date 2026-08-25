@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/DUNEDCDC.iml" filepath="$PROJECT_DIR$/.idea/DUNEDCDC.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/dunedcdc.iml" filepath="$PROJECT_DIR$/.idea/dunedcdc.iml" />
     </modules>
   </component>
 </project>
